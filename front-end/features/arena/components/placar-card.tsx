@@ -1,5 +1,6 @@
 import { Scroll } from "@/features/journey/components/ui";
 import { cn } from "@/lib/utils";
+import { Crest, crestFromApi } from "@/features/crest";
 import { FloatingNumbers, useDeltaFloats } from "./float-number";
 import type { ArenaTeam } from "../schemas/arena";
 
@@ -23,6 +24,7 @@ function PlacarRow({ team }: { team: ArenaTeam }) {
         >
           {team.position}
         </span>
+        <Crest spec={crestFromApi(team)} size={20} className="shrink-0" />
         <span className="truncate text-sm font-medium">{team.group_name}</span>
       </div>
       <div className="shrink-0 text-right">

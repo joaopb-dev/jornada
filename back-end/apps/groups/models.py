@@ -1,5 +1,43 @@
 from django.db import models
 
+
+class CrestShape(models.TextChoices):
+    """Formato do escudo (gerador de brasão — Fase F, ADR-016).
+
+    Os ids espelham o catálogo do front (`features/crest/lib/crest.ts`).
+    """
+
+    CLASSICO = "classico", "Clássico"
+    ARREDONDADO = "arredondado", "Arredondado"
+    LOSANGO = "losango", "Losango"
+    HEXAGONO = "hexagono", "Hexágono"
+
+
+class CrestColor(models.TextChoices):
+    """Cor de fundo do brasão — mesmos ids do front."""
+
+    VERDE = "verde", "Verde"
+    AZUL = "azul", "Azul"
+    VERMELHO = "vermelho", "Vermelho"
+    ROXO = "roxo", "Roxo"
+    DOURADO = "dourado", "Dourado"
+    PRATA = "prata", "Prata"
+    PRETO = "preto", "Preto"
+
+
+class CrestSymbol(models.TextChoices):
+    """Emblema central do brasão — mesmos ids do front."""
+
+    ESPADA = "espada", "Espada"
+    CORVO = "corvo", "Corvo"
+    ARVORE = "arvore", "Árvore"
+    CHAMA = "chama", "Chama"
+    ESTRELA = "estrela", "Estrela"
+    LUA = "lua", "Lua"
+    CAVEIRA = "caveira", "Caveira"
+    COROA = "coroa", "Coroa"
+
+
 class Group(models.Model):
     name = models.CharField(
             max_length=100,
@@ -18,6 +56,24 @@ class Group(models.Model):
     is_active = models.BooleanField(
             default=True,
             verbose_name="Ativo"
+            )
+    crest_shape = models.CharField(
+            max_length=20,
+            choices=CrestShape.choices,
+            default=CrestShape.CLASSICO,
+            verbose_name="Formato do brasão",
+            )
+    crest_color = models.CharField(
+            max_length=20,
+            choices=CrestColor.choices,
+            default=CrestColor.VERDE,
+            verbose_name="Cor do brasão",
+            )
+    crest_symbol = models.CharField(
+            max_length=20,
+            choices=CrestSymbol.choices,
+            default=CrestSymbol.ESPADA,
+            verbose_name="Emblema do brasão",
             )
     created_at = models.DateTimeField(
             auto_now_add=True,

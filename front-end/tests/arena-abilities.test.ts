@@ -45,6 +45,14 @@ test("assignAbilities faz PATCH /groups/{id}/ com {abilities}", async () => {
   assert.deepEqual(patched, { path: "7", body: { abilities: [1, 2, 3, 4] } });
 });
 
+test("saveGroupCrest faz PATCH /groups/{id}/ com os campos do brasão (Fase F)", async () => {
+  await arenaService.saveGroupCrest(3, { shape: "hexagono", color: "preto", symbol: "lua" });
+  assert.deepEqual(patched, {
+    path: "3",
+    body: { crest_shape: "hexagono", crest_color: "preto", crest_symbol: "lua" },
+  });
+});
+
 test("listTeamAbilities rejeita resposta fora do contrato", async () => {
   server.use(
     http.get(`${API_BASE_URL}/team-abilities/`, () => HttpResponse.json([{ id: 1 }])),

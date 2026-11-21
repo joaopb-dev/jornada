@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil } from "@/components/icons/rpg-icons";
 import { cn } from "@/lib/utils";
+import { Crest, crestFromApi } from "@/features/crest";
 import type { ArenaGroupOption } from "../schemas/arena";
 
 interface TeamsScoreTableProps {
@@ -16,6 +17,8 @@ interface TeamsScoreTableProps {
   onReset: (group: ArenaGroupOption) => void;
   /** Reset liberado — disputa encerrada exige reabrir antes. */
   canReset: boolean;
+  /** Abre o gerador de brasão da equipe (Fase F). */
+  onCrest: (group: ArenaGroupOption) => void;
 }
 
 function asNumber(value: string | undefined): number {
@@ -35,7 +38,8 @@ const SITUACAO_STYLES: Record<string, string> = {
  * Tabela "Pontos e Placares" (M-49): o professor edita o placar de cada
  * equipe na rodada. A situação reflete o ranking entre as equipes — pódio
  * (1º/2º/3º) ou "Em disputa" (sem pontos, como no mockup). A coluna
- * **Ação** reset a equipe inteira com aviso (M-51).
+ * **Ação** edita o **brasão** (Fase F) e reseta a equipe inteira com
+ * aviso (M-51); o escudo do time abre a linha.
  */
 export function TeamsScoreTable({
   groups,
@@ -43,6 +47,7 @@ export function TeamsScoreTable({
   onScoreChange,
   onReset,
   canReset,
+  onCrest,
 }: TeamsScoreTableProps) {
   const ranked = groups
     .map((group) => ({ group, value: asNumber(scores[String(group.id)]) }))
@@ -82,7 +87,12 @@ export function TeamsScoreTable({
                       : { label: "Em disputa", style: SITUACAO_STYLES.open };
             return (
               <tr key={group.id} className="border-b border-border/60 last:border-0">
-                <td className="px-4 py-2.5 font-medium">{group.name}</td>
+                <td className="px-4 py-2.5 font-medium">
+                  <span className="flex items-center gap-2">
+                    <Crest spec={crestFromApi(group)} size={26} className="shrink-0" />
+                    {group.name}
+                  </span>
+                </td>
                 <td className="px-4 py-2.5">
                   <Input
                     type="number"
@@ -107,20 +117,30 @@ export function TeamsScoreTable({
                   </span>
                 </td>
                 <td className="px-4 py-2.5 text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    disabled={!canReset}
-                    title={
-                      canReset
-                        ? `Resetar ${group.name}`
-                        : "Reabra a disputa para resetar equipes"
-                    }
-                    onClick={() => onReset(group)}
-                  >
-                    Resetar
-                  </Button>
+                  <span className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title={`Editar o brasão de ${group.name}`}
+                      onClick={() => onCrest(group)}
+                    >
+                      Brasão
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      disabled={!canReset}
+                      title={
+                        canReset
+                          ? `Resetar ${group.name}`
+                          : "Reabra a disputa para resetar equipes"
+                      }
+                      onClick={() => onReset(group)}
+                    >
+                      Resetar
+                    </Button>
+                  </span>
                 </td>
               </tr>
             );

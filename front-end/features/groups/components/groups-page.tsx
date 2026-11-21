@@ -2,6 +2,7 @@
 
 import { TeamForm } from "./team-form";
 import { removeTeam, upsertTeam } from "@/lib/catalog-mutations";
+import { Crest } from "@/features/crest";
 
 
 import { Button } from "@/components/ui/button";
@@ -37,9 +38,12 @@ function Grupos() {
             return (
               <Scroll key={t.id} className="flex flex-col gap-4">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg">{t.name}</h3>
-                    <p className="text-xs text-muted-foreground">{t.memberIds.length} membros</p>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <Crest spec={t.crest} size={38} className="mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <h3 className="text-lg break-words">{t.name}</h3>
+                      <p className="text-xs text-muted-foreground">{t.memberIds.length} membros</p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-xs uppercase tracking-widest text-muted-foreground">Letra</p>

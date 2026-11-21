@@ -1,5 +1,12 @@
 import { http, HttpResponse } from "msw";
 import { API_BASE_URL } from "@/lib/api-config";
+import {
+  CREST_COLOR_IDS,
+  CREST_SHAPE_IDS,
+  CREST_SYMBOL_IDS,
+  DEFAULT_CREST,
+  crestToApi,
+} from "@/features/crest";
 import { isMockTeacher } from "../mock-teacher";
 
 /**
@@ -12,8 +19,9 @@ import { isMockTeacher } from "../mock-teacher";
  */
 
 /** v4: gerência de rodadas — reabrir/estorno, PV editável, desfazer (M-50).
- *  v5: reset completo de equipe — vazamento de log + devolução de PV (M-51). */
-const storageKey = "jornada-mock-arena-v5";
+ *  v5: reset completo de equipe — vazamento de log + devolução de PV (M-51).
+ *  v6: brasão das equipes (formato/cor/emblema, Fase F). */
+const storageKey = "jornada-mock-arena-v6";
 
 type Status = "CONFIG" | "RUNNING" | "PAUSED" | "ENDED";
 
@@ -115,6 +123,15 @@ interface MockArena {
   nextRoundId: number;
   nextEventId: number;
   rounds: MockRound[];
+  /** Brasão por grupo (`GET/PATCH /groups/`, Fase F). */
+  groupCrests?: Record<string, MockCrest>;
+}
+
+/** Brasão persistido do grupo (espelha `Group.crest_*`). */
+interface MockCrest {
+  crest_shape: string;
+  crest_color: string;
+  crest_symbol: string;
 }
 
 /** Os 7 chefes da landing com as habilidades executáveis (`seed_chefes`). */
@@ -189,6 +206,38 @@ const SEED_TEAMS = [
   { group_id: 3, group_name: "Equipe Gama" },
 ];
 
+/** Brasão inicial de cada equipe do placar (Fase F). */
+const SEED_GROUP_CRESTS: Record<string, MockCrest> = {
+  "1": { crest_shape: "classico", crest_color: "verde", crest_symbol: "espada" },
+  "2": { crest_shape: "losango", crest_color: "azul", crest_symbol: "estrela" },
+  "3": { crest_shape: "hexagono", crest_color: "vermelho", crest_symbol: "coroa" },
+};
+
+/** Fallback (grupo sem brasão gravado) — padrão do gerador. */
+const DEFAULT_GROUP_CREST: MockCrest = crestToApi(DEFAULT_CREST);
+
+/** Entradas de `GET /groups/` — placar + brasão por grupo. */
+function groupsJson(arena: MockArena) {
+  const totals: Record<number, number> = { 1: 1280, 2: 980, 3: 1050 };
+  const crests = arena.groupCrests ?? {};
+  return SEED_TEAMS.map((team) => {
+    const crest = crests[String(team.group_id)] ?? DEFAULT_GROUP_CREST;
+    return {
+      id: team.group_id,
+      name: team.group_name,
+      points: totals[team.group_id] ?? 0,
+      extra_points: 0,
+      total_points: totals[team.group_id] ?? 0,
+      member_count: 3,
+      is_active: true,
+      created_at: "2026-01-05T00:00:00Z",
+      crest_shape: crest.crest_shape,
+      crest_color: crest.crest_color,
+      crest_symbol: crest.crest_symbol,
+    };
+  });
+}
+
 /** Catálogo 3+1 do mock (espelha `seed_habilidades_equipe`, tema Floresta). */
 const TEAM_TEMPLATES: Omit<MockTeamAbility, "id" | "charges_left">[] = [
   { template_id: 101, name: "Golpe de Raiz", kind: "BASIC", effect: "STRIKE", value: 150, max_charges: 2 },
@@ -242,6 +291,7 @@ function seed(): MockArena {
   return {
     nextRoundId: 2,
     nextEventId: 1,
+    groupCrests: { ...SEED_GROUP_CRESTS },
     rounds: [
       {
         id: 1,
@@ -326,13 +376,23 @@ function dealBossDamage(round: MockRound, damage: number, groupId?: number): voi
   }
 }
 
-function toState(round: MockRound) {
+function toState(arena: MockArena, round: MockRound) {
+  const crests = arena.groupCrests ?? {};
   const teams = Object.values(round.teams)
-    .map((team) => ({
-      ...team,
-      total_damage: team.base_damage + team.battle_damage,
-      points: teamPoints(round, team),
-    }))
+    .map((team) => {
+      const crest =
+        crests[String(team.group_id)] ??
+        SEED_GROUP_CRESTS[String(team.group_id)] ??
+        DEFAULT_GROUP_CREST;
+      return {
+        ...team,
+        crest_shape: crest.crest_shape,
+        crest_color: crest.crest_color,
+        crest_symbol: crest.crest_symbol,
+        total_damage: team.base_damage + team.battle_damage,
+        points: teamPoints(round, team),
+      };
+    })
     .sort((a, b) => b.points - a.points || b.total_damage - a.total_damage || a.group_id - b.group_id)
     .map((team, index) => ({ ...team, position: index + 1 }));
   return {
@@ -999,12 +1059,49 @@ export const arenaHandlers = [
 
   http.patch(`${API_BASE_URL}/groups/:id/`, async ({ request, params }) => {
     if (!isMockTeacher(request)) return error("Acesso não autorizado.", 403);
-    let body: { abilities?: unknown };
+    let body: {
+      abilities?: unknown;
+      crest_shape?: unknown;
+      crest_color?: unknown;
+      crest_symbol?: unknown;
+    };
     try {
       body = (await request.json()) as typeof body;
     } catch {
       return error("JSON inválido.");
     }
+
+    // Brasão (Fase F): PATCH de formato/cor/emblema, sem abilities —
+    // valida contra o catálogo igual ao choices do model `Group`.
+    if (body.abilities === undefined) {
+      const crest: MockCrest = {
+        crest_shape: String(body.crest_shape ?? ""),
+        crest_color: String(body.crest_color ?? ""),
+        crest_symbol: String(body.crest_symbol ?? ""),
+      };
+      if (!(CREST_SHAPE_IDS as readonly string[]).includes(crest.crest_shape)) {
+        return error("Formato de brasão inválido.");
+      }
+      if (!(CREST_COLOR_IDS as readonly string[]).includes(crest.crest_color)) {
+        return error("Cor de brasão inválida.");
+      }
+      if (!(CREST_SYMBOL_IDS as readonly string[]).includes(crest.crest_symbol)) {
+        return error("Emblema de brasão inválido.");
+      }
+      const key = String(Number(params.id));
+      const target = SEED_TEAMS.find((team) => String(team.group_id) === key);
+      if (!target) return error("Equipe não encontrada.", 404);
+      try {
+        const arena = read();
+        arena.groupCrests = { ...(arena.groupCrests ?? {}), [key]: crest };
+        write(arena);
+        const group = groupsJson(arena).find((item) => item.id === target.group_id);
+        return HttpResponse.json(group);
+      } catch {
+        return error("Não foi possível salvar o brasão.", 500);
+      }
+    }
+
     const ids = Array.isArray(body.abilities) ? body.abilities.map(Number) : [];
     if (ids.length !== 4 || new Set(ids).size !== 4) {
       return error("Escolha exatamente 4 habilidades (3 básicas + 1 ultimate).");
@@ -1046,21 +1143,10 @@ export const arenaHandlers = [
     }
   }),
 
-  // Grupos para a tabela de placares (GET /groups/, leitura pública, M-49).
+  // Grupos para a tabela de placares (GET /groups/, leitura pública, M-49)
+  // — inclui o brasão (Fase F).
   http.get(`${API_BASE_URL}/groups/`, () => {
-    const totals: Record<number, number> = { 1: 1280, 2: 980, 3: 1050 };
-    return HttpResponse.json(
-      SEED_TEAMS.map((team) => ({
-        id: team.group_id,
-        name: team.group_name,
-        points: totals[team.group_id] ?? 0,
-        extra_points: 0,
-        total_points: totals[team.group_id] ?? 0,
-        member_count: 3,
-        is_active: true,
-        created_at: "2026-01-05T00:00:00Z",
-      })),
-    );
+    return HttpResponse.json(groupsJson(read()));
   }),
 
   http.get(`${API_BASE_URL}/arena/rounds/`, () => {
@@ -1128,9 +1214,10 @@ export const arenaHandlers = [
 
   http.get(`${API_BASE_URL}/arena/rounds/:id/state/`, ({ params }) => {
     try {
-      const round = read().rounds.find((item) => item.id === Number(params.id));
+      const arena = read();
+      const round = arena.rounds.find((item) => item.id === Number(params.id));
       if (!round) return error("Rodada não encontrada.", 404);
-      return HttpResponse.json(toState(round));
+      return HttpResponse.json(toState(arena, round));
     } catch {
       return error("Não foi possível carregar a batalha.", 500);
     }
@@ -1264,7 +1351,7 @@ export const arenaHandlers = [
           round.events[eventsBefore].snapshot = checkpoint;
         }
         write(arena);
-        return HttpResponse.json(toState(round));
+        return HttpResponse.json(toState(arena, round));
       } catch {
         return error("Não foi possível executar a ação.", 500);
       }

@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { crestToApi, type CrestSpec } from "@/features/crest";
 import {
   arenaBossOptionSchema,
   arenaGroupOptionSchema,
@@ -42,6 +43,14 @@ export async function assignAbilities(
   templateIds: number[],
 ): Promise<void> {
   await api.patch(`/groups/${groupId}/`, { abilities: templateIds });
+}
+
+/** Grava o brasão escolhido (`PATCH /groups/{id}/`, Fase F). */
+export async function saveGroupCrest(
+  groupId: number,
+  crest: Partial<CrestSpec> | null,
+): Promise<void> {
+  await api.patch(`/groups/${groupId}/`, crestToApi(crest));
 }
 
 /**
@@ -105,6 +114,7 @@ export const arenaService = {
   listBosses,
   listTeamAbilities,
   assignAbilities,
+  saveGroupCrest,
   listGroups,
   updateRound,
   create: createRound,

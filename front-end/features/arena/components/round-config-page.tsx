@@ -20,6 +20,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Dices,
   Flag,
   Gem,
@@ -39,6 +46,7 @@ import {
 } from "@/features/journey/components/ui";
 import { apiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
+import { CrestPicker, crestFromApi, type CrestSpec } from "@/features/crest";
 
 import { ARENA_STATUS_META, type ArenaGroupOption, type ArenaRound } from "../schemas/arena";
 import { arenaService } from "../services/arena-service";
@@ -90,6 +98,12 @@ export function RoundConfigPage() {
   const [resetTarget, setResetTarget] = useState<{
     id: number;
     name: string;
+  } | null>(null);
+  // Editor de brasão (Fase F): alvo + rascunho da prévia.
+  const [crestTarget, setCrestTarget] = useState<{
+    id: number;
+    name: string;
+    spec: CrestSpec;
   } | null>(null);
 
   // Busca compartilhada (sem setState — o effect só lê em callback).
@@ -241,6 +255,16 @@ export function RoundConfigPage() {
       () => arenaService.resetTeam(round.id, { group_id: resetTarget.id }),
       `Equipe ${resetTarget.name} resetada.`,
     );
+  };
+
+  /** Grava o brasão escolhido (Fase F) e fecha o editor. */
+  const saveCrest = async () => {
+    if (!crestTarget) return;
+    const done = await runAction(
+      () => arenaService.saveGroupCrest(crestTarget.id, crestTarget.spec),
+      `Brasão de ${crestTarget.name} atualizado.`,
+    );
+    if (done) setCrestTarget(null);
   };
 
   const duplicate = async () => {
@@ -585,6 +609,13 @@ export function RoundConfigPage() {
                     setResetTarget({ id: group.id, name: group.name })
                   }
                   canReset={round.status !== "ENDED"}
+                  onCrest={(group) =>
+                    setCrestTarget({
+                      id: group.id,
+                      name: group.name,
+                      spec: crestFromApi(group),
+                    })
+                  }
                 />
               )}
               <p className="text-xs text-muted-foreground">
@@ -655,6 +686,50 @@ export function RoundConfigPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Editor de brasão da equipe (Fase F, ADR-016). */}
+          <Sheet
+            open={crestTarget !== null}
+            onOpenChange={(open) => {
+              if (!open) setCrestTarget(null);
+            }}
+          >
+            <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+              <SheetHeader>
+                <SheetTitle className="font-display text-xl">
+                  Brasão de {crestTarget?.name}
+                </SheetTitle>
+                <SheetDescription className="font-reading">
+                  Escolha formato, cor e emblema com as setas — o escudo
+                  aparece no placar.
+                </SheetDescription>
+              </SheetHeader>
+              {crestTarget && (
+                <div className="mt-6 space-y-4">
+                  <CrestPicker
+                    value={crestTarget.spec}
+                    onChange={(spec) =>
+                      setCrestTarget((current) =>
+                        current ? { ...current, spec } : current,
+                      )
+                    }
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => setCrestTarget(null)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button disabled={busy} onClick={() => void saveCrest()}>
+                      {busy ? "Salvando…" : "Salvar brasão"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </SheetContent>
+          </Sheet>
 
           {/* Rodapé de ações (mockup). */}
           <div

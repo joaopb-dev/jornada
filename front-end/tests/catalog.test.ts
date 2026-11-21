@@ -84,3 +84,18 @@ test("falha de armazenamento não retorna sucesso de salvamento", async () => {
   try { await assert.rejects(studentService.save({ id: "quota", name: "Teste", registration: "999997" })); }
   finally { localStorage.setItem = original; }
 });
+test("brasão da equipe persiste no catálogo e valor fora do catálogo é rejeitado (Fase F)", async () => {
+  const record = {
+    ...initial.groups[0],
+    id: "t-crest",
+    name: "Equipe Brasão",
+    crest: { shape: "losango", color: "prata", symbol: "caveira" },
+  };
+  const saved = await fetch(`${url("groups")}${record.id}/`, { method: "PUT", headers, body: JSON.stringify(record) });
+  assert.equal(saved.status, 200, await saved.text());
+  const stored = readCatalog().groups.find((group) => group.id === record.id);
+  assert.deepEqual(stored?.crest, { shape: "losango", color: "prata", symbol: "caveira" });
+
+  const bad = await fetch(`${url("groups")}${record.id}/`, { method: "PUT", headers, body: JSON.stringify({ ...record, crest: { shape: "triangulo", color: "prata", symbol: "caveira" } }) });
+  assert.equal(bad.status, 400);
+});

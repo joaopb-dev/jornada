@@ -120,6 +120,9 @@ class ArenaStateSerializer(serializers.ModelSerializer):
             data.append({
                 "group_id": c.group_id,
                 "group_name": c.group.name,
+                "crest_shape": c.group.crest_shape,
+                "crest_color": c.group.crest_color,
+                "crest_symbol": c.group.crest_symbol,
                 "base_damage": c.base_damage,
                 "battle_damage": c.battle_damage,
                 "total_damage": c.total_damage,

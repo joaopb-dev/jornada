@@ -38,6 +38,9 @@ class GroupSerializer(serializers.ModelSerializer):
             "total_points",
             "member_count",
             "is_active",
+            "crest_shape",
+            "crest_color",
+            "crest_symbol",
             "created_at",
             "abilities",
         ]
@@ -110,7 +113,10 @@ class LeaderboardSerializer(GroupSerializer):
     """
 
     class Meta(GroupSerializer.Meta):
-        fields = ["id", "name", "points", "extra_points", "total_points", "member_count"]
+        fields = [
+            "id", "name", "points", "extra_points", "total_points",
+            "member_count", "crest_shape", "crest_color", "crest_symbol",
+        ]
 
 
 class SetMembersSerializer(serializers.Serializer):

@@ -363,3 +363,59 @@ class SeedHabilidadesEquipeTests(TestCase):
         call_command("seed_habilidades_equipe", "--no-assign")
         self.assertEqual(TeamAbilityTemplate.objects.count(), 8)
         self.assertEqual(GroupAbility.objects.count(), 0)
+
+
+class GroupCrestTests(TestCase):
+    """Gerador de brasão (Fase F, ADR-016): formato, cor e emblema da equipe."""
+
+    def test_padrao_do_brasao_ao_criar(self):
+        resp = staff_client().post(
+            "/api/groups/", {"name": "Equipe Escudo"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["crest_shape"], "classico")
+        self.assertEqual(resp.data["crest_color"], "verde")
+        self.assertEqual(resp.data["crest_symbol"], "espada")
+
+    def test_professor_edita_o_brasao(self):
+        Group.objects.create(name="Para Editar")
+        url = f"/api/groups/{Group.objects.get(name='Para Editar').pk}/"
+        resp = staff_client().patch(
+            url,
+            {
+                "crest_shape": "losango",
+                "crest_color": "roxo",
+                "crest_symbol": "corvo",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["crest_shape"], "losango")
+        self.assertEqual(resp.data["crest_color"], "roxo")
+        self.assertEqual(resp.data["crest_symbol"], "corvo")
+        grupo = Group.objects.get(name="Para Editar")
+        self.assertEqual((grupo.crest_shape, grupo.crest_color, grupo.crest_symbol),
+                         ("losango", "roxo", "corvo"))
+
+    def test_brasao_invalido_rejeitado(self):
+        Group.objects.create(name="Inválida")
+        url = f"/api/groups/{Group.objects.get(name='Inválida').pk}/"
+        resp = staff_client().patch(
+            url, {"crest_shape": "triangulo"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("crest_shape", str(resp.data))
+
+    def test_leitura_publica_inclui_o_brasao(self):
+        Group.objects.create(name="Visível")
+        resp = anon_client().get("/api/groups/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data[0]["crest_shape"], "classico")
+        self.assertEqual(resp.data[0]["crest_symbol"], "espada")
+
+    def test_placar_publico_inclui_o_brasao(self):
+        Group.objects.create(name="Líder", points=10)
+        resp = anon_client().get("/api/leaderboard/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data[0]["crest_color"], "verde")
+        self.assertEqual(resp.data[0]["crest_shape"], "classico")

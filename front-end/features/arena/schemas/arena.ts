@@ -45,6 +45,10 @@ export type TeamAbilityTemplate = z.infer<typeof teamAbilityTemplateSchema>;
 export const arenaTeamSchema = z.object({
   group_id: z.number(),
   group_name: z.string(),
+  /** Brasão da equipe no estado da raid (Fase F, ADR-016). */
+  crest_shape: z.string().optional(),
+  crest_color: z.string().optional(),
+  crest_symbol: z.string().optional(),
   base_damage: z.number(),
   battle_damage: z.number(),
   total_damage: z.number(),
@@ -167,6 +171,10 @@ export const arenaGroupOptionSchema = z.object({
   total_points: z.number(),
   member_count: z.number(),
   is_active: z.boolean(),
+  /** Brasão parametrizado da equipe (Fase F, ADR-016). */
+  crest_shape: z.string().optional(),
+  crest_color: z.string().optional(),
+  crest_symbol: z.string().optional(),
 });
 
 /** Resumo de chefe p/ o seletor de "nova rodada" (`GET /bosses/`). */

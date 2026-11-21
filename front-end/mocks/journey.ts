@@ -30,10 +30,11 @@ export const seedStudents: Student[] = names.map((name, i) => ({
 }));
 
 export const seedTeams: Team[] = [
-  { id: "t1", name: "Lâmina de Prata", memberIds: ["s1", "s2", "s3"], extraPoints: { s1: 0.5 } },
-  { id: "t2", name: "Corvos do Norte", memberIds: ["s4", "s5", "s6"], extraPoints: {} },
-  { id: "t3", name: "Guardiões do Vale", memberIds: ["s7", "s8", "s9"], extraPoints: {} },
-  { id: "t4", name: "Chama Errante", memberIds: ["s10", "s11", "s12"], extraPoints: {} },
+  // Brasões do mockup "Placar das Equipes" (Fase F).
+  { id: "t1", name: "Lâmina de Prata", memberIds: ["s1", "s2", "s3"], extraPoints: { s1: 0.5 }, crest: { shape: "classico", color: "verde", symbol: "espada" } },
+  { id: "t2", name: "Corvos do Norte", memberIds: ["s4", "s5", "s6"], extraPoints: {}, crest: { shape: "arredondado", color: "dourado", symbol: "corvo" } },
+  { id: "t3", name: "Guardiões do Vale", memberIds: ["s7", "s8", "s9"], extraPoints: {}, crest: { shape: "classico", color: "vermelho", symbol: "arvore" } },
+  { id: "t4", name: "Chama Errante", memberIds: ["s10", "s11", "s12"], extraPoints: {}, crest: { shape: "arredondado", color: "roxo", symbol: "chama" } },
 ];
 
 export const seedSkills: Skill[] = [

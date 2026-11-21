@@ -49,6 +49,33 @@ test("GET /groups/ devolve os grupos da tabela de placares", async () => {
     { id: rows[0]?.id, name: rows[0]?.name, total_points: rows[0]?.total_points, is_active: rows[0]?.is_active },
     { id: 1, name: "Equipe Alfa", total_points: 1280, is_active: true },
   );
+  // Brasão parametrizado (Fase F) — padrão do gerador no seed.
+  assert.equal(rows[0]?.crest_shape, "classico");
+  assert.equal(rows[0]?.crest_color, "verde");
+  assert.equal(rows[0]?.crest_symbol, "espada");
+});
+
+test("PATCH /groups/ grava o brasão e o GET devolve (Fase F)", async () => {
+  const anon = await patch("/groups/1/", { crest_shape: "losango" }, { "Content-Type": "application/json" });
+  assert.equal(anon.status, 403);
+
+  const resp = await patch("/groups/1/", {
+    crest_shape: "losango",
+    crest_color: "roxo",
+    crest_symbol: "corvo",
+  });
+  assert.equal(resp.status, 200);
+  const saved = (await resp.json()) as Record<string, unknown>;
+  assert.equal(saved.crest_shape, "losango");
+
+  const rows = (await (await get("/groups/")).json()) as Record<string, unknown>[];
+  assert.equal(rows[0]?.crest_shape, "losango");
+  assert.equal(rows[0]?.crest_color, "roxo");
+  assert.equal(rows[0]?.crest_symbol, "corvo");
+
+  const bad = await patch("/groups/1/", { crest_shape: "triangulo" });
+  assert.equal(bad.status, 400);
+  assert.ok((await bad.text()).includes("Formato de brasão inválido"));
 });
 
 test("resumo da rodada espelha datas, parâmetros e contribuições", async () => {
@@ -119,12 +146,23 @@ test("start registra as equipes e o placar pré-lançado sobrevive", async () =>
 
   const state = (await (await get("/arena/rounds/1/state/")).json()) as {
     status: string;
-    teams: { group_id: number; points: number }[];
+    teams: {
+      group_id: number;
+      points: number;
+      crest_shape?: string;
+      crest_color?: string;
+      crest_symbol?: string;
+    }[];
   };
   assert.equal(state.status, "RUNNING");
   assert.equal(state.teams.length, 3); // SEED_TEAMS registradas no start
   const team = state.teams.find((item) => item.group_id === 1);
   assert.equal(team?.points, 420); // ajuste prévio intacto (??= do mock)
+  // Brasão da equipe no estado da batalha (Fase F) — o mesmo que o
+  // PATCH /groups/ gravou mais acima no histórico.
+  assert.equal(team?.crest_shape, "losango");
+  assert.equal(team?.crest_color, "roxo");
+  assert.equal(team?.crest_symbol, "corvo");
 });
 
 // ——— M-50: gerência de rodadas (duplicar/excluir/PV/reabrir/desfazer) ———
