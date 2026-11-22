@@ -1,3 +1,4 @@
+from django.core.management import call_command
 from django.test import TestCase
 
 from apps.groups.models import Group
@@ -164,6 +165,7 @@ class HeroFichaCatalogoTests(TestCase):
                 "description": "Vem do deserto.",
                 "passive": "Sangue Frio [revisar]",
                 "role": "Suporte",
+                "image": "/personagens/guerreira.jpg",
             },
             format="json",
         )
@@ -171,6 +173,7 @@ class HeroFichaCatalogoTests(TestCase):
         self.assertEqual(criado.data["description"], "Vem do deserto.")
         self.assertEqual(criado.data["passive"], "Sangue Frio [revisar]")
         self.assertEqual(criado.data["role"], "Suporte")
+        self.assertEqual(criado.data["image"], "/personagens/guerreira.jpg")
 
         # função fora do catálogo → 400
         resp = client.patch(
@@ -217,3 +220,44 @@ class HeroFichaCatalogoTests(TestCase):
         )
         self.assertEqual(solto.status_code, 200)
         self.assertIsNone(solto.data["group"])
+
+
+class SeedHeroisTests(TestCase):
+    """`seed_herois` espelha os 6 heróis da landing (idempotente)."""
+
+    def test_seed_cria_seis_herois_com_arte_e_feiticos(self):
+        call_command("seed_herois")
+        self.assertEqual(Hero.objects.count(), 6)
+        self.assertEqual(Spell.objects.count(), 18)
+        jasper = Hero.objects.get(name="Jasper")
+        self.assertEqual(jasper.hero_class, "Druida")
+        self.assertEqual(jasper.role, "Suporte")
+        self.assertEqual(jasper.image, "/personagens/jasper.jpg")
+        self.assertTrue(jasper.passive.startswith("ao atingir nota máxima"))
+        self.assertEqual(
+            jasper.attributes, {"forca": 3, "sabedoria": 3, "carisma": 3}
+        )
+        self.assertEqual(jasper.spells.count(), 3)
+        # kit da fonte: custos 2, 3 e 5 PR
+        self.assertEqual(
+            set(jasper.spells.values_list("cost", flat=True)), {2, 3, 5}
+        )
+        kovu = Hero.objects.get(name="Kovu")
+        self.assertEqual(kovu.role, "Ataque")
+        self.assertEqual(kovu.image, "/personagens/kovu-enviado.png")
+
+    def test_seed_é_idempotente(self):
+        call_command("seed_herois")
+        call_command("seed_herois")
+        self.assertEqual(Hero.objects.count(), 6)
+        self.assertEqual(Spell.objects.count(), 18)
+
+    def test_seed_preserva_feitico_equipado_pelo_professor(self):
+        call_command("seed_herois")
+        jasper = Hero.objects.get(name="Jasper")
+        extra = Spell.objects.create(name="Feitiço do Professor", cost=5)
+        jasper.spells.add(extra)
+        call_command("seed_herois")
+        jasper = Hero.objects.get(name="Jasper")
+        self.assertTrue(jasper.spells.filter(id=extra.id).exists())
+        self.assertEqual(jasper.spells.count(), 4)

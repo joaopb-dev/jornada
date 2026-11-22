@@ -44,6 +44,12 @@ class Hero(Combatant):
             default=Role.ATAQUE,
             verbose_name="Função",
             )
+    image = models.CharField(
+            max_length=300,
+            blank=True,
+            verbose_name="Imagem",
+            help_text="Caminho local (/…) ou URL HTTPS.",
+            )
     description = models.TextField(
             blank=True,
             verbose_name="Descrição",

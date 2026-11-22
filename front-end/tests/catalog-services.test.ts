@@ -110,9 +110,9 @@ test("perguntas: choices aninhadas e POST usa text/choices (replace-all)", async
 
 test("heróis: atributos completos e create leva group/journey explícitos (null)", async () => {
   server.use(http.get(`${base}/heroes/`, () => HttpResponse.json([
-    { id: 2, name: "Emy", group: null, group_name: null, journey: null, journey_name: null, hero_class: "Magia", role: "Suporte", description: "Curandeira.", passive: "Regeneração.", attributes: { forca: 1, sabedoria: 5, carisma: 3 }, spells: [2], is_active: true },
+    { id: 2, name: "Emy", image: "/personagens/emy.jpg", group: null, group_name: null, journey: null, journey_name: null, hero_class: "Magia", role: "Suporte", description: "Curandeira.", passive: "Regeneração.", attributes: { forca: 1, sabedoria: 5, carisma: 3 }, spells: [2], is_active: true },
     // Linha antiga sem ficha completa: o schema completa com zero.
-    { id: 3, name: "Rook", group: 4, group_name: "Escudo", journey: 1, journey_name: "Campanha", hero_class: "Tanque", role: "Ataque", description: "Muralha.", passive: "Guarda.", attributes: { forca: 4 }, spells: [], is_active: false },
+    { id: 3, name: "Rook", image: "", group: 4, group_name: "Escudo", journey: 1, journey_name: "Campanha", hero_class: "Tanque", role: "Ataque", description: "Muralha.", passive: "Guarda.", attributes: { forca: 4 }, spells: [], is_active: false },
   ])));
   const list = await getHeroes();
   assert.deepEqual(list[0]?.attributes, { forca: 1, sabedoria: 5, carisma: 3 });
@@ -121,10 +121,10 @@ test("heróis: atributos completos e create leva group/journey explícitos (null
 
   server.use(http.post(`${base}/heroes/`, async ({ request }) => {
     await jsonBody(request);
-    return HttpResponse.json({ id: 4, name: "Emy", group: null, group_name: null, journey: null, journey_name: null, hero_class: "Magia", role: "Suporte", description: "Curandeira.", passive: "Regeneração.", attributes: { forca: 1, sabedoria: 5, carisma: 3 }, spells: [2], is_active: true }, { status: 201 });
+    return HttpResponse.json({ id: 4, name: "Emy", image: "/personagens/emy.jpg", group: null, group_name: null, journey: null, journey_name: null, hero_class: "Magia", role: "Suporte", description: "Curandeira.", passive: "Regeneração.", attributes: { forca: 1, sabedoria: 5, carisma: 3 }, spells: [2], is_active: true }, { status: 201 });
   }));
   await createHero({
-    name: "Emy", hero_class: "Magia", role: "Suporte", description: "Curandeira.",
+    name: "Emy", image: "/personagens/emy.jpg", hero_class: "Magia", role: "Suporte", description: "Curandeira.",
     passive: "Regeneração.", spells: [2],
     attributes: { forca: 1, sabedoria: 5, carisma: 3 },
     group: null, journey: null,
@@ -132,10 +132,11 @@ test("heróis: atributos completos e create leva group/journey explícitos (null
   const body = lastBody as Record<string, unknown>;
   assert.equal(body["group"], null, "create exige a chave group explícita");
   assert.equal(body["journey"], null, "create exige a chave journey explícita");
+  assert.equal(body["image"], "/personagens/emy.jpg", "image viaja no create");
 
   server.use(http.patch(`${base}/heroes/2/`, async ({ request }) => {
     await jsonBody(request);
-    return HttpResponse.json({ id: 2, name: "Emy", group: 4, group_name: "Escudo", journey: 1, journey_name: "Campanha", hero_class: "Magia", role: "Suporte", description: "Curandeira.", passive: "Regeneração.", attributes: { forca: 1, sabedoria: 5, carisma: 3 }, spells: [2], is_active: true }, { status: 200 });
+    return HttpResponse.json({ id: 2, name: "Emy", image: "/personagens/emy.jpg", group: 4, group_name: "Escudo", journey: 1, journey_name: "Campanha", hero_class: "Magia", role: "Suporte", description: "Curandeira.", passive: "Regeneração.", attributes: { forca: 1, sabedoria: 5, carisma: 3 }, spells: [2], is_active: true }, { status: 200 });
   }));
   await updateHero(2, { group: 4, journey: 1 });
   assert.deepEqual(lastBody, { group: 4, journey: 1 }, "vínculo de corrida é {group, journey}");

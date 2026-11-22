@@ -6,6 +6,7 @@ import { Field, SubmitButton, selectClass } from "@/features/journey/components/
 import { useValidatedForm } from "@/hooks/use-validated-form";
 import { apiErrorMessage, apiFieldErrors } from "@/lib/api-error";
 import { createHero, updateHero } from "@/features/heroes/services/hero-service";
+import { imageUrlSchema } from "@/features/bosses/schemas/boss";
 import type { Hero } from "@/features/heroes";
 import type { Skill } from "@/features/skills";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 export function HeroForm({ hero, skills, onDone }: { hero: Hero | null; skills: Skill[]; onDone: () => void }) {
   const form = useValidatedForm({ f: {
     name: hero?.name ?? "",
+    image: hero?.image ?? "",
     hero_class: hero?.hero_class ?? "",
     role: hero?.role ?? ("Ataque" as Hero["role"]),
     description: hero?.description ?? "",
@@ -28,12 +30,14 @@ export function HeroForm({ hero, skills, onDone }: { hero: Hero | null; skills: 
     const x: Record<string, string> = {};
     if (!f.name.trim()) x["name"] = "Informe o nome.";
     if (!f.hero_class.trim()) x["hero_class"] = "Informe a classe.";
+    if (!imageUrlSchema.safeParse(f.image).success) x["image"] = "Use caminho local ou URL HTTPS.";
     if (!f.description.trim()) x["description"] = "Informe a descrição.";
     (["forca", "sabedoria", "carisma"] as const).forEach((k) => { const v = Number(f.attrs[k]); if (!Number.isInteger(v) || v < 0 || v > 5) x[k] = "0 a 5"; });
     setErr(x);
     if (Object.keys(x).length) return;
     const payload = {
       name: f.name.trim(),
+      image: f.image.trim(),
       hero_class: f.hero_class.trim(),
       role: f.role,
       description: f.description.trim(),
@@ -66,6 +70,9 @@ export function HeroForm({ hero, skills, onDone }: { hero: Hero | null; skills: 
       <Field label="Nome" error={err["name"]}><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
       <Field label="Classe" error={err["hero_class"]}><Input value={f.hero_class} onChange={(e) => setF({ ...f, hero_class: e.target.value })} /></Field>
       <Field label="Função"><select aria-label="Função do herói" className={selectClass} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as Hero["role"] })}><option>Ataque</option><option>Suporte</option></select></Field>
+      <Field label="Imagem (caminho local ou URL HTTPS)" error={err["image"]}>
+        <Input value={f.image} onChange={(e) => setF({ ...f, image: e.target.value })} placeholder="/personagens/jasper.jpg" />
+      </Field>
       <Field label="Descrição" error={err["description"]}><Textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
       <Field label="Passiva"><Textarea rows={2} value={f.passive} onChange={(e) => setF({ ...f, passive: e.target.value })} /></Field>
       <div className="grid grid-cols-3 gap-3">

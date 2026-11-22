@@ -11,13 +11,15 @@ export const heroAttributesSchema = z.object({
 
 /**
  * DTO de `/api/heroes/` — espelha o `HeroSerializer` (ADR-024):
- * `hero_class`/`role`/`description`/`passive`/`attributes` e `spells` (PKs);
- * `group`/`journey` **null** = modelo avulso do catálogo (com par, é o
- * representante da equipe na batalha).
+ * `hero_class`/`role`/`image`/`description`/`passive`/`attributes` e
+ * `spells` (PKs); `group`/`journey` **null** = modelo avulso do
+ * catálogo (com par, é o representante da equipe na batalha).
  */
 export const heroSchema = z.object({
   id: z.coerce.number().int(),
   name: z.string().trim().min(1).max(100),
+  /** Arte em `/personagens/` servida pelo Next (`Hero.image`). */
+  image: z.string(),
   group: z.number().int().nullable(),
   group_name: z.string().nullable(),
   journey: z.number().int().nullable(),
@@ -41,6 +43,8 @@ export type HeroAttributes = z.infer<typeof heroAttributesSchema>;
 /** O que o form edita. `group`/`journey` vão explícitos (null no create). */
 export interface HeroWrite {
   name: string;
+  /** Caminho local (`/…`) ou URL HTTPS; vazio = sem arte. */
+  image: string;
   hero_class: string;
   role: "Ataque" | "Suporte";
   description: string;
@@ -49,4 +53,6 @@ export interface HeroWrite {
   spells: number[];
   group: number | null;
   journey: number | null;
+  /** Só no toggle do card (create usa o default do servidor). */
+  is_active?: boolean;
 }

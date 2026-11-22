@@ -28,6 +28,7 @@ class HeroSerializer(serializers.ModelSerializer):
             "journey_name",
             "hero_class",
             "role",
+            "image",
             "description",
             "passive",
             "attributes",
