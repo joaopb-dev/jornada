@@ -1,43 +1,81 @@
 import { http, HttpResponse } from "msw";
 import { API_BASE_URL } from "@/lib/api-config";
-import { agendaSchema } from "@/features/public-agenda/schemas/agenda";
-import { groups, missions } from "../landing-agenda";
-import { readCatalog } from "../catalog-db";
+import {
+  agendaWriteSchema,
+  type Agenda,
+  type AgendaWrite,
+} from "@/features/public-agenda/schemas/agenda";
+import { agendaSeed } from "../landing-agenda";
 import { isMockTeacher } from "../mock-teacher";
-import type { PublicAgenda } from "@/features/public-agenda/types/agenda";
 
-const storageKey = "jornada-mock-agenda-v1";
-let memory = JSON.stringify({ groups, missions });
+/**
+ * Espelho de `GET/PUT /api/agenda/` para a demo completa (`enabled`) e
+ * para os testes — no modo `catalog` os handlers ficam de fora e a
+ * agenda bate no Django de verdade (ADR-023).
+ */
+let state: Agenda = structuredClone(agendaSeed);
+let sequence = 100;
 
-function read() {
-  try { return localStorage.getItem(storageKey) ?? memory; } catch { return memory; }
+/** Restaura a semente (isolamento entre testes). */
+export function resetAgenda(): void {
+  state = structuredClone(agendaSeed);
+  sequence = 100;
 }
-function write(value: string) {
-  try { localStorage.setItem(storageKey, value); } catch { throw new Error("Armazenamento indisponível"); }
-  memory = value;
+
+const errorList = (messages: string[]) => HttpResponse.json(messages, { status: 400 });
+
+/** Regras de negócio como **lista** — mesmo formato do backend. */
+function ruleErrors(payload: AgendaWrite): string[] {
+  const errors: string[] = [];
+  const numbers = payload.incursions.map((incursion) => incursion.number);
+  if (new Set(numbers).size !== numbers.length) {
+    errors.push("Número de incursão repetido.");
+  }
+  const active = new Set(state.groups.map((group) => group.id));
+  for (const incursion of payload.incursions) {
+    if (!incursion.title.trim()) {
+      errors.push(`Título da incursão ${incursion.number} é obrigatório.`);
+    }
+    const seen = new Set<number>();
+    for (const part of incursion.participations) {
+      if (!active.has(part.group_id)) {
+        errors.push(`Equipe ${part.group_id} inexistente ou inativa.`);
+      } else if (seen.has(part.group_id)) {
+        errors.push("Equipe repetida na mesma incursão.");
+      }
+      seen.add(part.group_id);
+    }
+  }
+  return errors;
 }
-function resolveAgenda(agenda: PublicAgenda): PublicAgenda {
-  const catalog = readCatalog();
-  return { ...agenda, groups: agenda.groups.flatMap((group) => {
-    const team = catalog.groups.find((item) => item.id === group.id);
-    if (!team) return [];
-    return [{ ...group, name: team.name, letter: team.letter, members: catalog.students.filter((student) => team.memberIds.includes(student.id)) }];
-  }) };
-}
+
 export const agendaHandlers = [
-  http.get(`${API_BASE_URL}/mock-agenda/`, () => {
-    try { return HttpResponse.json(resolveAgenda(agendaSchema.parse(JSON.parse(read())))); }
-    catch { return HttpResponse.json({ detail: "Não foi possível ler a agenda." }, { status: 500 }); }
-  }),
-  http.put(`${API_BASE_URL}/mock-agenda/`, async ({ request }) => {
-    if (!isMockTeacher(request)) return HttpResponse.json({ detail: "Acesso não autorizado." }, { status: 403 });
-    try {
-      const result = agendaSchema.safeParse(await request.json());
-      if (!result.success) return HttpResponse.json({ detail: "Dados da agenda inválidos." }, { status: 400 });
-      const resolved = resolveAgenda(result.data);
-      if (resolved.groups.length !== result.data.groups.length) return HttpResponse.json({ detail: "Uma equipe foi removida. Recarregue a agenda." }, { status: 409 });
-      write(JSON.stringify(resolved));
-      return HttpResponse.json(resolved);
-    } catch { return HttpResponse.json({ detail: "Não foi possível salvar a agenda." }, { status: 500 }); }
+  http.get(`${API_BASE_URL}/agenda/`, () => HttpResponse.json(state)),
+  http.put(`${API_BASE_URL}/agenda/`, async ({ request }) => {
+    if (!isMockTeacher(request)) {
+      return HttpResponse.json({ detail: "Acesso não autorizado." }, { status: 403 });
+    }
+    const body = await request.json().catch(() => null);
+    const parsed = agendaWriteSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorList(parsed.error.issues.map((issue) => issue.message));
+    }
+    const errors = ruleErrors(parsed.data);
+    if (errors.length) return errorList(errors);
+    // Substituição total (como o backend): ids novos a cada gravação.
+    state = {
+      groups: state.groups,
+      incursions: parsed.data.incursions.map((incursion) => ({
+        id: sequence++,
+        number: incursion.number,
+        title: incursion.title.trim(),
+        date: incursion.date,
+        participations: incursion.participations.map((part) => ({
+          group_id: part.group_id,
+          language: part.language.trim(),
+        })),
+      })),
+    };
+    return HttpResponse.json(state);
   }),
 ];

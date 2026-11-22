@@ -22,3 +22,31 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
   return fallback;
 }
+
+/**
+ * **Lista** de mensagens de um erro da API — o formato dos erros de regra
+ * do DRF (`["…", "…"]`) e também os detalhes por campo
+ * (`{"incursions": [{"title": ["…"]}]}`), achatados para exibição.
+ */
+export function apiErrorList(error: unknown, fallback: string): string[] {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    if (Array.isArray(data)) {
+      const list = data.filter((item): item is string => typeof item === "string" && Boolean(item));
+      if (list.length) return list;
+    }
+    if (data && typeof data === "object") {
+      const found: string[] = [];
+      const walk = (value: unknown): void => {
+        if (typeof value === "string" && value) found.push(value);
+        else if (Array.isArray(value)) value.forEach(walk);
+        else if (value && typeof value === "object") Object.values(value).forEach(walk);
+      };
+      walk(data);
+      if (found.length) return found;
+    }
+    if (error.message) return [error.message];
+  }
+  if (error instanceof Error && error.message) return [error.message];
+  return [fallback];
+}

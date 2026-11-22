@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { before, beforeEach, after, test } from "node:test";
 import { setupServer } from "msw/node";
 import { catalogHandlers } from "../mocks/handlers/catalog";
-import { agendaHandlers } from "../mocks/handlers/agenda";
 import { catalogSchema, readCatalog, writeCatalog, type CatalogResource } from "../mocks/catalog-db";
 import { API_BASE_URL } from "../lib/api-config";
 import { api } from "../lib/api";
@@ -18,7 +17,7 @@ function storage(): Storage {
   return { get length() { return values.size; }, getItem: (key) => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); }, clear: () => values.clear(), key: (index) => [...values.keys()][index] ?? null, removeItem: (key) => { values.delete(key); } };
 }
 const initial = readCatalog();
-const server = setupServer(...catalogHandlers, ...agendaHandlers);
+const server = setupServer(...catalogHandlers);
 const headers = { Authorization: "Bearer test-teacher", "Content-Type": "application/json" };
 const url = (resource: string) => `${API_BASE_URL}/mock-catalog/${resource}/`;
 before(() => {
@@ -57,15 +56,13 @@ test("os serviços validam a leitura e salvam pelos mesmos endpoints", async () 
   await studentService.remove(student.id);
   assert.ok(!(await studentService.list()).some((item) => item.id === student.id));
 });
-test("transferência, exclusão e vínculos atualizam a agenda pública", async () => {
+test("transferência e vínculos atualizam o catálogo", async () => {
   const from = initial.groups[0]; const to = initial.groups[1]; const studentId = from.memberIds[0];
   await groupService.save({ ...to, memberIds: [...to.memberIds, studentId], letter: "B" });
   const db = readCatalog();
   assert.ok(!db.groups[0].memberIds.includes(studentId));
   assert.equal(db.groups[0].extraPoints[studentId], undefined);
-  const agenda = await (await fetch(`${API_BASE_URL}/mock-agenda/`)).json();
-  assert.ok(agenda.groups.find((group: { id: string }) => group.id === to.id).members.some((member: { id: string }) => member.id === studentId));
-  assert.equal(agenda.groups.find((group: { id: string }) => group.id === to.id).letter, "B");
+  assert.equal(db.groups.find((group) => group.id === to.id)?.letter, "B");
   await studentService.remove(studentId);
   assert.ok(!readCatalog().groups.some((group) => group.memberIds.includes(studentId)));
   const skillId = initial.skills[0].id;

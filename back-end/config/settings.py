@@ -62,6 +62,7 @@ INSTALLED_APPS = [
         'apps.bosses',
         'apps.journeys',
         'apps.arena',
+        'apps.agenda',
         ]
 
 MIDDLEWARE = [

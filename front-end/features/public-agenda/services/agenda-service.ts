@@ -1,14 +1,24 @@
 import { api } from "@/lib/api";
-import { agendaSchema } from "../schemas/agenda";
-import type { PublicAgenda } from "../types/agenda";
+import {
+  agendaSchema,
+  type Agenda,
+  type AgendaWrite,
+} from "../schemas/agenda";
 
-// Contrato provisório: substituir ao integrar a API real.
-const endpoint = "/mock-agenda/";
-export async function getAgenda(): Promise<PublicAgenda> {
-  const response = await api.get(endpoint);
-  return agendaSchema.parse(response.data);
+/** `GET/PUT /api/agenda/` — contrato real do backend (ADR-023). */
+const endpoint = "/agenda/";
+
+export async function getAgenda(signal?: AbortSignal): Promise<Agenda> {
+  const { data } = await api.get(endpoint, { signal });
+  return agendaSchema.parse(data);
 }
-export async function saveAgenda(agenda: PublicAgenda): Promise<PublicAgenda> {
-  const response = await api.put(endpoint, agendaSchema.parse(agenda));
-  return agendaSchema.parse(response.data);
+
+/**
+ * Substitui as incursões da agenda em uma tacada (o backend devolve a
+ * agenda completa de volta). As regras de negócio ficam **no servidor** —
+ * os erros chegam como lista DRF e são exibidos como estão.
+ */
+export async function saveAgenda(payload: AgendaWrite): Promise<Agenda> {
+  const { data } = await api.put(endpoint, payload);
+  return agendaSchema.parse(data);
 }

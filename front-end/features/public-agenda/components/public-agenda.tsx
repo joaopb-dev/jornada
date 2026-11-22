@@ -1,58 +1,161 @@
 "use client";
 
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PageHeader, PageState } from "@/features/journey/components/ui";
+import { Crest, crestFromApi } from "@/features/crest";
 import { formatDate } from "@/lib/date-format";
-import { useAgenda } from "../hooks/use-agenda";
 import { CalendarDays, Search } from "@/components/icons/rpg-icons";
-import { useState } from "react";
+import { useAgenda } from "../hooks/use-agenda";
 
-const groupTones = ["bg-accent/60", "bg-info/10", "bg-parchment/50", "bg-secondary/60"];
-
+/**
+ * Agenda pública de incursões: faixa com as datas das missões + grid de
+ * equipes (brasão, aventureiros e a linguagem de cada incursão). O grid
+ * cresce por colunas — many equipes não quebram o layout (ADR-023).
+ */
 export function PublicAgenda({ embedded = false }: { embedded?: boolean }) {
   const { agenda, status, retry } = useAgenda();
   const [query, setQuery] = useState("");
-  if (!agenda || status !== "ready") return <PageState status={status} retry={retry}>{null}</PageState>;
+
+  if (!agenda || status !== "ready") {
+    return <PageState status={status} retry={retry}>{null}</PageState>;
+  }
+
   const search = query.trim().toLocaleLowerCase("pt-BR");
-  const groups = agenda.groups.map((group, index) => ({ ...group, index, members: group.name.toLocaleLowerCase("pt-BR").includes(search) ? group.members : group.members.filter((member) => `${member.name} ${member.registration}`.toLocaleLowerCase("pt-BR").includes(search)) })).filter((group) => !search || group.members.length > 0);
+  const groups = agenda.groups.filter(
+    (group) =>
+      !search ||
+      group.name.toLocaleLowerCase("pt-BR").includes(search) ||
+      group.members.some((member) =>
+        `${member.name} ${member.registration}`.toLocaleLowerCase("pt-BR").includes(search),
+      ),
+  );
 
   return (
-    <section id="agenda" className={embedded ? "w-full" : "mx-auto w-full max-w-7xl px-5 py-10 md:px-10 md:py-12"}>
-      <PageHeader title="Agenda de incursões" description="Aventureiros, grupos e datas de cada missão." />
+    <section
+      id="agenda"
+      className={embedded ? "w-full" : "mx-auto w-full max-w-7xl px-5 py-10 md:px-10 md:py-12"}
+    >
+      <PageHeader
+        title="Agenda de incursões"
+        description="Datas das missões, equipes e linguagens de cada apresentação."
+      />
+
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input aria-label="Buscar na agenda" className="pl-9" placeholder="Nome, matrícula ou grupo" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <Input
+            aria-label="Buscar na agenda"
+            className="pl-9"
+            placeholder="Nome, matrícula ou equipe"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </div>
-        <span className="flex items-center gap-2 text-sm text-muted-foreground"><CalendarDays className="h-4 w-4" /> {agenda.missions.length} incursões · {agenda.groups.length} grupos</span>
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CalendarDays className="h-4 w-4" /> {agenda.incursions.length} incursões ·{" "}
+          {agenda.groups.length} equipes
+        </span>
       </div>
-      <div className="overflow-x-auto rounded-sm border border-border-strong" role="region" aria-label="Calendário de incursões por grupo" tabIndex={0}>
-        <table className="w-full min-w-[760px] border-collapse text-sm">
-          <caption className="sr-only">Matrículas, aventureiros, grupos, linguagens e datas de participação nas incursões</caption>
-          <thead className="bg-sidebar">
-            <tr>
-              <th scope="col" className="border-b border-r border-border px-4 py-3 text-left font-medium">Matrícula</th>
-              <th scope="col" className="min-w-52 border-b border-r border-border px-4 py-3 text-left font-medium">Aventureiro</th>
-              <th scope="col" className="border-b border-r border-border px-4 py-3 text-left font-medium">Grupo</th>
-              {agenda.missions.map((mission) => <th key={mission.id} scope="col" className="min-w-36 border-b border-r border-border px-4 py-3 text-center font-medium"><span className="block">Incursão {mission.number}</span><span className="mt-1 block max-w-48 font-reading text-xs font-normal text-muted-foreground">{mission.title}</span></th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map((group) => {
-              const members = group.members.length ? group.members : [{ id: `${group.id}-empty`, name: "Sem aventureiros", registration: "—" }];
-              return members.map((member, index) => (
-                <tr key={member.id} className={groupTones[group.index % groupTones.length]}>
-                  <td className="border-b border-r border-border px-4 py-3 font-mono text-xs">{member.registration}</td>
-                  <td className="border-b border-r border-border px-4 py-3">{member.name}</td>
-                  {index === 0 && <th scope="rowgroup" rowSpan={members.length} className="min-w-40 border-b border-r border-border px-4 py-4 text-center font-display font-semibold">{group.letter ? `Equipe ${group.letter}` : group.name}</th>}
-                  {index === 0 && group.schedule.map((slot, column) => <td key={agenda.missions[column]?.id ?? column} rowSpan={members.length} className="border-b border-r border-border px-4 py-4 text-center">{slot ? <><span className="block font-medium">{slot.language}</span><time dateTime={slot.date} className="mt-1 block whitespace-nowrap font-reading text-muted-foreground">{formatDate(slot.date)}</time></> : <span className="text-muted-foreground" aria-label="Sem participação">—</span>}</td>)}
-                </tr>
-              ));
-            })}
-            {groups.length === 0 && <tr><td colSpan={3 + agenda.missions.length} className="px-5 py-10 text-center font-reading text-muted-foreground">{search ? "Nenhum aventureiro ou grupo encontrado." : "Nenhum grupo cadastrado."}</td></tr>}
-          </tbody>
-        </table>
-      </div>
+
+      {/* Linha do tempo das incursões */}
+      {agenda.incursions.length === 0 ? (
+        <p className="mb-6 rounded-sm border border-dashed border-border px-4 py-5 text-center font-reading text-sm text-muted-foreground">
+          Nenhuma incursão agendada ainda.
+        </p>
+      ) : (
+        <ol className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {agenda.incursions.map((incursion) => (
+            <li
+              key={incursion.id}
+              className="rounded-sm border border-border bg-background/40 p-4"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-display text-xs uppercase tracking-widest text-accent">
+                  Incursão {incursion.number}
+                </span>
+                <time
+                  dateTime={incursion.date ?? undefined}
+                  className="whitespace-nowrap font-reading text-xs text-muted-foreground"
+                >
+                  {incursion.date ? formatDate(incursion.date) : "Data a definir"}
+                </time>
+              </div>
+              <p className="mt-1 font-display text-base">{incursion.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {incursion.participations.length}{" "}
+                {incursion.participations.length === 1 ? "equipe" : "equipes"}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {/* Grid de equipes: brasão + aventureiros + linguagem por incursão */}
+      {groups.length === 0 ? (
+        <p className="rounded-sm border border-dashed border-border px-4 py-8 text-center font-reading text-sm text-muted-foreground">
+          {search ? "Nenhuma equipe ou aventureiro encontrado." : "Nenhuma equipe cadastrada."}
+        </p>
+      ) : (
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {groups.map((group) => (
+            <li
+              key={group.id}
+              className="flex flex-col gap-3 rounded-sm border border-border bg-background/40 p-4"
+            >
+              <div className="flex items-center gap-3">
+                <Crest spec={crestFromApi(group)} size={40} className="shrink-0" />
+                <div className="min-w-0">
+                  <p className="truncate font-display text-base">{group.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {group.members.length}{" "}
+                    {group.members.length === 1 ? "aventureiro" : "aventureiros"}
+                  </p>
+                </div>
+              </div>
+
+              <ul className="space-y-1 border-t border-border/60 pt-3 text-sm">
+                {group.members.map((member) => (
+                  <li key={member.id} className="flex items-baseline justify-between gap-2">
+                    <span className="truncate">{member.name}</span>
+                    <span className="shrink-0 font-mono text-[0.7rem] text-muted-foreground">
+                      {member.registration}
+                    </span>
+                  </li>
+                ))}
+                {group.members.length === 0 && (
+                  <li className="text-muted-foreground">Sem aventureiros</li>
+                )}
+              </ul>
+
+              <ul className="mt-auto space-y-1 border-t border-border/60 pt-3 text-xs">
+                {agenda.incursions.map((incursion) => {
+                  const participation = incursion.participations.find(
+                    (item) => item.group_id === group.id,
+                  );
+                  return (
+                    <li key={incursion.id} className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-muted-foreground">
+                        Inc. {incursion.number}
+                      </span>
+                      <span
+                        className={
+                          participation ? "font-medium" : "text-muted-foreground"
+                        }
+                      >
+                        {participation ? participation.language : "—"}
+                      </span>
+                    </li>
+                  );
+                })}
+                {agenda.incursions.length === 0 && (
+                  <li className="text-muted-foreground">Sem incursões</li>
+                )}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

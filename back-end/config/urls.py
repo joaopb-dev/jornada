@@ -17,6 +17,7 @@ urlpatterns = [
         path('', include('apps.bosses.urls')),      # api/bosses/ boss-spells/ questions/ choices/
         path('', include('apps.journeys.urls')),    # api/journeys/ stages/ group-journeys/ stage-progress/ battle-events/
         path('', include('apps.arena.urls')),        # api/arena/rounds/
+        path('', include('apps.agenda.urls')),       # api/agenda/
 
         # Contrato OpenAPI (só dados; o back-end não renderiza páginas)
         path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
