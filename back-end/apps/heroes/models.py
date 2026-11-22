@@ -6,21 +6,57 @@ from apps.spells.models import Combatant
 # per journey). The HP of a fight lives in StageProgress, each stage starts
 # with the hero at max_hp.
 class Hero(Combatant):
+    class Role(models.TextChoices):
+        ATAQUE = "Ataque", "Ataque"
+        SUPORTE = "Suporte", "Suporte"
+
     name = models.CharField(
             max_length=100,
             verbose_name="Nome"
             )
+    # Opcional: com grupo+jornada o herói é o representante da equipe na
+    # batalha (1 por grupo por jornada); sem eles é um modelo/ficha avulso
+    # do catálogo (front "Heróis" — ADR-024).
     group = models.ForeignKey(
             "groups.Group",
             related_name="heroes",
+            null=True,
+            blank=True,
             on_delete=models.CASCADE,
             verbose_name="Grupo",
             )
     journey = models.ForeignKey(
             "journeys.Journey",
             related_name="heroes",
+            null=True,
+            blank=True,
             on_delete=models.CASCADE,
             verbose_name="Jornada",
+            )
+    hero_class = models.CharField(
+            max_length=100,
+            blank=True,
+            verbose_name="Classe",
+            )
+    role = models.CharField(
+            max_length=20,
+            choices=Role.choices,
+            default=Role.ATAQUE,
+            verbose_name="Função",
+            )
+    description = models.TextField(
+            blank=True,
+            verbose_name="Descrição",
+            )
+    passive = models.TextField(
+            blank=True,
+            verbose_name="Passiva",
+            )
+    attributes = models.JSONField(
+            default=dict,
+            blank=True,
+            verbose_name="Atributos",
+            help_text='{"forca","sabedoria","carisma"} — inteiros 0 a 5.',
             )
     is_active = models.BooleanField(
             default=True,

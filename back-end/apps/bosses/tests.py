@@ -332,3 +332,163 @@ class SeedChefesTests(TestCase):
             ).exists()
         )
         self.assertEqual(BossAbility.objects.count(), 22)
+
+
+class BossFichaCatalogoTests(TestCase):
+    """Ficha do catálogo de chefes: especialidade, imagem e habilidades
+    aninhadas graváveis (ADR-024)."""
+
+    habilidade = {
+        "name": "Olhar Hipnótico",
+        "trigger": "CONCEITO",
+        "effect": "PENALTY",
+        "value": 10,
+        "every": 1,
+        "threshold": 3,
+        "mode": "ANY",
+        "scope": "TEAM",
+        "min_count": 1,
+        "description": "Perde 10 de Dano Base quando o conceito falha.",
+    }
+
+    def test_especialidade_imagem_e_habilidades_no_ciclo(self):
+        client = staff_client()
+        criado = client.post(
+            "/api/bosses/",
+            {
+                "name": "Guardião",
+                "specialty": "Guardião da Lógica",
+                "image": "/personagens/chefe.jpg",
+                "max_hp": 130,
+                "abilities": [self.habilidade, {**self.habilidade, "name": "Sussurro"}],
+            },
+            format="json",
+        )
+        self.assertEqual(criado.status_code, 201, criado.data)
+        self.assertEqual(criado.data["specialty"], "Guardião da Lógica")
+        self.assertEqual(criado.data["image"], "/personagens/chefe.jpg")
+        self.assertEqual(len(criado.data["abilities"]), 2)
+
+        # leitura pública devolve a ficha completa (a Arena/landing usam)
+        resp = anon_client().get(f"/api/bosses/{criado.data['id']}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["specialty"], "Guardião da Lógica")
+        self.assertEqual(
+            [a["name"] for a in resp.data["abilities"]],
+            ["Olhar Hipnótico", "Sussurro"],
+        )
+        self.assertEqual(resp.data["abilities"][0]["trigger"], "CONCEITO")
+
+        # a lista substitui as habilidades (escrita da ficha inteira)
+        url = f"/api/bosses/{criado.data['id']}/"
+        alterado = client.patch(
+            url, {"abilities": [{**self.habilidade, "name": "Única"}]}, format="json"
+        )
+        self.assertEqual(alterado.status_code, 200, alterado.data)
+        self.assertEqual([a["name"] for a in alterado.data["abilities"]], ["Única"])
+        self.assertEqual(BossAbility.objects.filter(boss__name="Guardião").count(), 1)
+
+        # sem a chave, mantém o que está lá
+        sem_chave = client.patch(url, {"max_hp": 150}, format="json")
+        self.assertEqual(sem_chave.status_code, 200)
+        self.assertEqual(len(sem_chave.data["abilities"]), 1)
+        self.assertEqual(sem_chave.data["max_hp"], 150)
+
+    def test_habilidade_sem_nome_rejeitada(self):
+        resp = staff_client().post(
+            "/api/bosses/",
+            {"name": "Chefe Ruim", "abilities": [{**self.habilidade, "name": ""}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("abilities", resp.data)
+
+
+class QuestionFichaCatalogoTests(TestCase):
+    """Pergunta do catálogo: linguagem, chefe opcional, alternativas aninhadas
+    e as regras de forma (§4: lista DRF no topo)."""
+
+    def alternativas(self):
+        return [
+            {"text": "Repetição", "is_correct": True},
+            {"text": "Laço", "is_correct": False},
+            {"text": "Função", "is_correct": False},
+        ]
+
+    def test_linguagem_chefe_opcional_e_alternativas_no_ciclo(self):
+        client = staff_client()
+        # banco geral: sem chefe (null) + linguagem
+        criado = client.post(
+            "/api/questions/",
+            {
+                "text": "O que é um laço?",
+                "language": "JavaScript",
+                "points": 10,
+                "choices": self.alternativas(),
+            },
+            format="json",
+        )
+        self.assertEqual(criado.status_code, 201, criado.data)
+        self.assertIsNone(criado.data["boss"])
+        self.assertEqual(criado.data["language"], "JavaScript")
+        self.assertEqual(len(criado.data["choices"]), 3)
+        self.assertTrue(all("id" in c for c in criado.data["choices"]))
+
+        # leitura pública traz as alternativas (sem is_correct para não-professor)
+        resp = anon_client().get(f"/api/questions/{criado.data['id']}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data["choices"]), 3)
+        self.assertNotIn("is_correct", resp.data["choices"][0])
+
+        # a lista substitui as alternativas
+        url = f"/api/questions/{criado.data['id']}/"
+        trocado = client.patch(
+            url,
+            {"choices": [{"text": "Nova", "is_correct": True}, {"text": "Antiga", "is_correct": False}]},
+            format="json",
+        )
+        self.assertEqual(trocado.status_code, 200, trocado.data)
+        self.assertEqual(
+            [c["text"] for c in trocado.data["choices"]], ["Nova", "Antiga"]
+        )
+        self.assertEqual(Choice.objects.filter(question__id=criado.data["id"]).count(), 2)
+
+    def test_regras_de_alternativas_como_lista_no_topo(self):
+        client = staff_client()
+
+        # uma só alternativa → lista DRF no topo (o corpo É a lista)
+        uma = client.post(
+            "/api/questions/",
+            {"text": "Poucas", "choices": [{"text": "Única", "is_correct": True}]},
+            format="json",
+        )
+        self.assertEqual(uma.status_code, 400)
+        self.assertIsInstance(uma.data, list)
+        self.assertIn("Alternativas: ao menos duas.", uma.data)
+
+        # duas alternativas sem correta → lista DRF no topo
+        nenhuma = client.post(
+            "/api/questions/",
+            {
+                "text": "Sem gabarito",
+                "choices": [
+                    {"text": "A", "is_correct": False},
+                    {"text": "B", "is_correct": False},
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(nenhuma.status_code, 400)
+        self.assertIsInstance(nenhuma.data, list)
+        self.assertIn("Marque uma alternativa correta.", nenhuma.data)
+
+        # chave choices presente e vazia → também regra
+        vazia = client.post(
+            "/api/questions/", {"text": "Vazia", "choices": []}, format="json"
+        )
+        self.assertEqual(vazia.status_code, 400)
+        self.assertIsInstance(vazia.data, list)
+
+        # sem a chave (escrita esparsa) → segue permitido (o motor filtra)
+        esparsa = client.post("/api/questions/", {"text": "Esparsa"}, format="json")
+        self.assertEqual(esparsa.status_code, 201)

@@ -1,16 +1,17 @@
 import { MOCKING_MODE } from "@/lib/api-config";
 import { createAuthenticationHandlers } from "./authentication";
 import { agendaHandlers } from "./agenda";
-import { catalogHandlers } from "./catalog";
 import { arenaHandlers } from "./arena";
 
 /**
- * Handlers ativos por modo:
- * - `enabled`  → demo completa (tudo mockado).
- * - `catalog`  → modo híbrido: só o catálogo é mockado; **auth, arena e
- *   agenda são reais** (Django em :8000) — `/agenda/` passa direto.
+ * Handlers da demo `enabled` (sem backend): auth, agenda e arena.
+ *
+ * O catálogo **não é mais mockado**: as telas de professor (Aventureiros,
+ * Grupos, Perguntas, Habilidades, Chefes, Heróis, Missões, Salão) falam
+ * direto com o Django (ADR-024). No modo `disabled` (padrão) não há
+ * handler nenhum.
  */
 export const handlers =
-  MOCKING_MODE === "catalog"
-    ? [...catalogHandlers]
-    : [...createAuthenticationHandlers(), ...agendaHandlers, ...catalogHandlers, ...arenaHandlers];
+  MOCKING_MODE === "enabled"
+    ? [...createAuthenticationHandlers(), ...agendaHandlers, ...arenaHandlers]
+    : [];

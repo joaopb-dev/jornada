@@ -53,6 +53,14 @@ class Group(models.Model):
             verbose_name="Pontos extras",
             help_text="Lançados manualmente pelo professor.",
             )
+    letter = models.CharField(
+            max_length=1,
+            null=True,
+            blank=True,
+            unique=True,
+            verbose_name="Letra",
+            help_text="Letra da equipe no mapa (opcional, uma por equipe).",
+            )
     is_active = models.BooleanField(
             default=True,
             verbose_name="Ativo"

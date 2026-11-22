@@ -50,3 +50,22 @@ export function apiErrorList(error: unknown, fallback: string): string[] {
   if (error instanceof Error && error.message) return [error.message];
   return [fallback];
 }
+
+/**
+ * Erros **por campo** do DRF (`{"matricula": ["Já existe…"]}`) para pousar
+ * direto nos inputs do form. Lista no topo (regra de negócio) e `detail`
+ * não têm campo — nesses casos devolve `{}` e o chamador usa
+ * `apiErrorMessage`/`apiErrorList`.
+ */
+export function apiFieldErrors(error: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!axios.isAxiosError(error)) return out;
+  const data = error.response?.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)) return out;
+  for (const [field, value] of Object.entries(data as Record<string, unknown>)) {
+    const messages = Array.isArray(value) ? value : [value];
+    const first = messages.find((item): item is string => typeof item === "string" && Boolean(item));
+    if (first) out[field] = first;
+  }
+  return out;
+}

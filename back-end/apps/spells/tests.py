@@ -55,3 +55,52 @@ class SpellApiTests(TestCase):
             "/api/spells/", {"name": "Errado", "spell_type": "XXXX"}, format="json"
         )
         self.assertEqual(resp.status_code, 400)
+
+    # --- Catálogo do front (custo/dados/revisão — ADR-024) ------------------
+
+    def test_campos_de_catalogo_no_ciclo(self):
+        client = staff_client()
+        criado = client.post(
+            "/api/spells/",
+            {
+                "name": "Golpe Preciso",
+                "cost": 5,
+                "dice": "2d10+3",
+                "review": True,
+                "spell_type": Spell.SpellType.DAMAGE,
+                "description": "Corta a armadura.",
+            },
+            format="json",
+        )
+        self.assertEqual(criado.status_code, 201, criado.data)
+        self.assertEqual(criado.data["cost"], 5)
+        self.assertEqual(criado.data["dice"], "2d10+3")
+        self.assertTrue(criado.data["review"])
+
+        resp = anon_client().get(f"/api/spells/{criado.data['id']}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["cost"], 5)
+        self.assertEqual(resp.data["dice"], "2d10+3")
+        self.assertTrue(resp.data["review"])
+
+    def test_padroes_do_catalogo(self):
+        # Sem custo/dados: padrões do model (2 PR, —, sem revisão).
+        resp = staff_client().post("/api/spells/", {"name": "Neutra"}, format="json")
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["cost"], 2)
+        self.assertEqual(resp.data["dice"], "—")
+        self.assertFalse(resp.data["review"])
+
+    def test_dados_invalidos_rejeitados(self):
+        resp = staff_client().post(
+            "/api/spells/", {"name": "Tonta", "dice": "banana"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("dice", resp.data)
+
+    def test_custo_fora_do_catalogo_rejeitado(self):
+        resp = staff_client().post(
+            "/api/spells/", {"name": "Cara", "cost": 4}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("cost", resp.data)

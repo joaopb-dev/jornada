@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { IncursionStatus } from "@/features/missions";
 import { AlertTriangle, Compass, CornerOrnament, Gem, Loader2, Lock, RefreshCw } from "@/components/icons/rpg-icons";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -58,20 +57,17 @@ export function PageHeader({ title, description, action }: { title: string; desc
 
 /* ---------- Selos de status ---------- */
 
-type SealKind = IncursionStatus | "derrota" | "vitoria";
+/** Selos de status das corridas (`GroupJourney.status` do back-end). */
+type SealKind = "PROG" | "DONE" | "FAIL";
 const sealStyles: Record<SealKind, string> = {
-  planejada: "bg-parchment text-parchment-foreground border-parchment-foreground/30",
-  andamento: "bg-info/15 text-info border-info/40",
-  concluida: "bg-accent text-accent-foreground border-success/40",
-  vitoria: "bg-accent text-accent-foreground border-success/40",
-  derrota: "bg-destructive/10 text-destructive border-destructive/40",
+  PROG: "bg-info/15 text-info border-info/40",
+  DONE: "bg-accent text-accent-foreground border-success/40",
+  FAIL: "bg-destructive/10 text-destructive border-destructive/40",
 };
 const sealLabels: Record<SealKind, string> = {
-  planejada: "Planejada",
-  andamento: "Em andamento",
-  concluida: "Concluída",
-  vitoria: "Missão cumprida",
-  derrota: "Derrota",
+  PROG: "Em andamento",
+  DONE: "Concluída",
+  FAIL: "Derrota",
 };
 
 export function Seal({ kind, className }: { kind: SealKind; className?: string }) {
@@ -162,9 +158,7 @@ export function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/** Simula o carregamento de uma fonte remota. */
-
-
+/** Página de dados: mostra o carregamento, o erro com retry ou o conteúdo. */
 export function PageState({ status, retry, children }: { status: "loading" | "ready" | "error"; retry: () => void; children: ReactNode }) {
   if (status === "loading") return <LoadingState />;
   if (status === "error") return <ErrorState onRetry={retry} />;

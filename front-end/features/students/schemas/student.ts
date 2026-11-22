@@ -1,8 +1,22 @@
 import { z } from "zod";
+
 /**
- * Matrícula do aluno (o formato de 6 dígitos é validado no formulário
- * (`validateRegistration`) e na escrita do mock (`catalog.ts`); o schema de
- * leitura fica tolerante para não derrubar o catálogo inteiro se houver
- * dado antigo salvo no `localStorage`.
+ * DTO de `/api/students/` — espelha o `StudentSerializer` do back-end
+ * (ADR-024): `matricula` é a regra de 6 dígitos validada **no servidor**.
  */
-export const studentSchema = z.object({ id: z.string().min(1), name: z.string().trim().min(1).max(100), registration: z.string().trim().min(1).max(100) });
+export const studentSchema = z.object({
+  id: z.coerce.number().int(),
+  name: z.string().trim().min(1).max(100),
+  matricula: z.string(),
+  group: z.number().int().nullable(),
+  group_name: z.string().nullable(),
+  is_active: z.boolean(),
+});
+
+export type Student = z.infer<typeof studentSchema>;
+
+/** O que o form edita: nome + matrícula. */
+export interface StudentWrite {
+  name: string;
+  matricula: string;
+}

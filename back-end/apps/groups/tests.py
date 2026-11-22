@@ -419,3 +419,44 @@ class GroupCrestTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data[0]["crest_color"], "verde")
         self.assertEqual(resp.data[0]["crest_shape"], "classico")
+
+
+class GroupLetterTests(TestCase):
+    """Letra da equipe no mapa (catálogo do front — ADR-024).
+
+    Opcional, única entre equipes; equipes sem letra coexistem (NULL único).
+    """
+
+    def test_letra_no_ciclo_e_unicidade(self):
+        client = staff_client()
+        alfa = client.post(
+            "/api/groups/", {"name": "Alfa", "letter": "A"}, format="json"
+        )
+        self.assertEqual(alfa.status_code, 201, alfa.data)
+        self.assertEqual(alfa.data["letter"], "A")
+
+        # sem letra → null (e uma segunda equipe também pode ficar sem letra)
+        beta = client.post("/api/groups/", {"name": "Beta"}, format="json")
+        self.assertEqual(beta.status_code, 201, beta.data)
+        self.assertIsNone(beta.data["letter"])
+        gama = client.post("/api/groups/", {"name": "Gama"}, format="json")
+        self.assertEqual(gama.status_code, 201, gama.data)
+
+        # letra repetida → 400
+        dup = client.post(
+            "/api/groups/", {"name": "Delta", "letter": "A"}, format="json"
+        )
+        self.assertEqual(dup.status_code, 400)
+
+        # patch atribui a letra depois
+        alterado = client.patch(
+            f"/api/groups/{beta.data['id']}/", {"letter": "B"}, format="json"
+        )
+        self.assertEqual(alterado.status_code, 200)
+        self.assertEqual(alterado.data["letter"], "B")
+
+        # leitura pública expõe a letra
+        resp = anon_client().get("/api/groups/")
+        letras = {g["name"]: g["letter"] for g in resp.data}
+        self.assertEqual(letras["Alfa"], "A")
+        self.assertIsNone(letras["Gama"])

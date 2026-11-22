@@ -1,16 +1,17 @@
 "use client";
 
 import { StudentForm } from "./student-form";
-import { removeStudent } from "@/lib/catalog-mutations";
+import { deleteStudent } from "@/features/students/services/student-service";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { apiErrorMessage } from "@/lib/api-error";
 
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Confirm, EmptyState, PageState, Scroll } from "@/features/journey/components/ui";
-import { useCatalogLoad } from "@/hooks/use-catalog-load";
-import { useJornada } from "@/stores/journey-store";
 import type { Student } from "@/features/students";
+import { getStudents } from "@/features/students/services/student-service";
 import { Pencil, Plus, Search, Trash2 } from "@/components/icons/rpg-icons";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -18,18 +19,16 @@ import { toast } from "sonner";
 
 
 function Aventureiros() {
-  const { status, retry } = useCatalogLoad();
-  const { students, teams } = useJornada();
+  const { data: students, status, refresh, retry } = useApiQuery(getStudents);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Student | "new" | null>(null);
   const [del, setDel] = useState<Student | null>(null);
-  const filtered = useMemo(() => students.filter((s) => `${s.name} ${s.registration}`.toLowerCase().includes(q.toLowerCase())), [students, q]);
+  const filtered = useMemo(() => (students ?? []).filter((s) => `${s.name} ${s.matricula}`.toLowerCase().includes(q.toLowerCase())), [students, q]);
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageStudents = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const teamOf = (id: string) => teams.find((t) => t.memberIds.includes(id))?.name;
 
   return (
     <PageState status={status} retry={retry}>
@@ -56,7 +55,7 @@ function Aventureiros() {
               <li key={s.id} className="flex items-center justify-between gap-3 px-5 py-3">
                 <div className="min-w-0">
                   <p className="font-medium">{s.name}</p>
-                  <p className="break-words text-xs text-muted-foreground">Matrícula {s.registration} · {teamOf(s.id) ?? "sem grupo"}</p>
+                  <p className="break-words text-xs text-muted-foreground">Matrícula {s.matricula} · {s.group_name ?? "sem grupo"}</p>
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => setEditing(s)}><Pencil /></Button>
@@ -77,9 +76,15 @@ function Aventureiros() {
         )}
         </>
       )}
-      <StudentSheet value={editing} onClose={() => setEditing(null)} />
+      <StudentSheet value={editing} onClose={() => { setEditing(null); refresh(); }} />
       <Confirm open={!!del} onOpenChange={(o) => !o && setDel(null)} title="Excluir aventureiro?" description={`${del?.name} será removido da guilda e do seu grupo.`} confirmLabel="Excluir" destructive
-        onConfirm={async () => { if (del && await removeStudent(del.id)) { toast.success("Aventureiro removido."); setDel(null); } }} />
+        onConfirm={() => {
+          if (!del) return;
+          deleteStudent(del.id).then(
+            () => { toast.success("Aventureiro removido."); setDel(null); refresh(); },
+            (error: unknown) => { toast.error(apiErrorMessage(error, "Não foi possível remover o aventureiro.")); },
+          );
+        }} />
     </PageState>
   );
 }

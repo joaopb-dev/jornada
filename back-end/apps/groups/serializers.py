@@ -33,6 +33,7 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "letter",
             "points",
             "extra_points",
             "total_points",

@@ -1,3 +1,4 @@
+from django.core.validators import RegexValidator
 from django.db import models
 
 
@@ -78,6 +79,12 @@ class Combatant(CombatMixin, models.Model):
         self.save(update_fields=fields)
 
 
+DICE_VALIDATOR = RegexValidator(
+        regex=r"^(?:—|[1-9]\d*d[1-9]\d*(?:[+-]\d+)?)$",
+        message="Use XdY ou XdY+Z, ou — para nenhum.",
+        )
+
+
 class Spell(models.Model):
     class SpellType(models.TextChoices):
         # DB value -> label shown in UI
@@ -85,6 +92,12 @@ class Spell(models.Model):
         DAMAGE = "DMGE", "Dano"
         HEAL = "HEAL", "Cura"
         SHIELD = "SHLD", "Escudo"
+
+    class Cost(models.IntegerChoices):
+        # Custo em pontos de recurso (catálogo do front, ADR-024).
+        LOW = 2, "2 PR"
+        MID = 3, "3 PR"
+        HIGH = 5, "5 PR"
 
     name = models.CharField(
             max_length=100,
@@ -94,6 +107,24 @@ class Spell(models.Model):
     description = models.TextField(
             blank=True,
             verbose_name="Descrição"
+            )
+    cost = models.PositiveSmallIntegerField(
+            choices=Cost.choices,
+            default=Cost.LOW,
+            verbose_name="Custo (PR)",
+            )
+    dice = models.CharField(
+            max_length=32,
+            blank=True,
+            default="—",
+            validators=[DICE_VALIDATOR],
+            verbose_name="Dados",
+            help_text="XdY ou XdY+Z; — quando o efeito não usa dados.",
+            )
+    review = models.BooleanField(
+            default=False,
+            verbose_name="Revisar",
+            help_text="Marca a ficha como pendente de revisão.",
             )
     spell_type = models.CharField(
             max_length=4,

@@ -1051,7 +1051,8 @@ const REVERSIBLE_ACTIONS = ACTIONS.filter(
 );
 
 export const arenaHandlers = [
-  // Chefes para o formulário de nova rodada (o catálogo mock usa /mock-catalog/).
+  // Chefes para o formulário de nova rodada (na demo `enabled` também
+  // responde o catálogo de chefes das telas do professor).
   http.get(`${API_BASE_URL}/bosses/`, () => HttpResponse.json(BOSSES)),
 
   // Catálogo do picker 3+1 e gravação da escolha (ADR-021).

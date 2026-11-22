@@ -1,2 +1,2 @@
 export { QuestionsPage } from "./components/questions-page";
-export type { Question } from "./types/questions";
+export type { Question, Choice, QuestionWrite } from "./schemas/question";

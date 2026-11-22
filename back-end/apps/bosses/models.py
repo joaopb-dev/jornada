@@ -8,9 +8,21 @@ class Boss(models.Model):
             unique=True,
             verbose_name="Nome"
             )
+    specialty = models.CharField(
+            max_length=100,
+            blank=True,
+            verbose_name="Especialidade",
+            help_text="Linha curta exibida sob o nome (ex.: \"Guardião da Lógica\").",
+            )
     description = models.TextField(
             blank=True,
             verbose_name="Descrição"
+            )
+    image = models.CharField(
+            max_length=300,
+            blank=True,
+            verbose_name="Imagem",
+            help_text="Caminho local (/…) ou URL HTTPS.",
             )
     max_hp = models.PositiveIntegerField(
             default=100,
@@ -194,10 +206,19 @@ class Question(models.Model):
     boss = models.ForeignKey(
             Boss,
             related_name="questions",
-            on_delete=models.CASCADE
+            null=True,
+            blank=True,
+            on_delete=models.CASCADE,
+            help_text="Vazio = banco geral (não sorteado em batalhas de chefe).",
             )
     text = models.TextField(
             verbose_name="Pergunta"
+            )
+    language = models.CharField(
+            max_length=100,
+            blank=True,
+            verbose_name="Linguagem",
+            help_text="Linguagem/tema da apresentação relacionada (opcional).",
             )
     points = models.PositiveIntegerField(
             default=10,

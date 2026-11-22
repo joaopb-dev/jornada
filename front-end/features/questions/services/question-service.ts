@@ -1,23 +1,34 @@
 import { api } from "@/lib/api";
-import { questionSchema } from "../schemas/question";
-import type { Question } from "@/features/questions";
+import { questionSchema, type Question, type QuestionWrite } from "../schemas/question";
 
-// Provisional MSW contract: adapt this feature's calls to the Django DTO later.
+const endpoint = "/questions/";
+
+/** `GET /api/questions/` — leitura pública do banco de perguntas. */
 export async function getQuestions(signal?: AbortSignal): Promise<Question[]> {
-  const { data } = await api.get("/mock-catalog/questions/", { signal });
+  const { data } = await api.get(endpoint, { signal });
   return questionSchema.array().parse(data);
 }
 
-// The current mock uses PUT as upsert; this is not Django's create contract.
-export async function saveQuestion(item: Question): Promise<Question> {
-  const payload = questionSchema.parse(item);
-  const { data } = await api.put(`/mock-catalog/questions/${encodeURIComponent(payload.id)}/`, payload);
+/** `POST /api/questions/` — cria com alternativas aninhadas (replace-all). */
+export async function createQuestion(payload: QuestionWrite): Promise<Question> {
+  const { data } = await api.post(endpoint, payload);
   return questionSchema.parse(data);
 }
 
-export async function deleteQuestion(id: string): Promise<void> {
-  await api.delete(`/mock-catalog/questions/${encodeURIComponent(id)}/`);
+/** `PATCH /api/questions/{id}/` — a lista de `choices` substitui as do servidor. */
+export async function updateQuestion(id: number, payload: Partial<QuestionWrite>): Promise<Question> {
+  const { data } = await api.patch(`${endpoint}${id}/`, payload);
+  return questionSchema.parse(data);
 }
 
-// Preserve existing consumers while keeping HTTP operations explicit above.
-export const questionService = { list: getQuestions, save: saveQuestion, remove: deleteQuestion };
+/** `DELETE /api/questions/{id}/` */
+export async function deleteQuestion(id: number): Promise<void> {
+  await api.delete(`${endpoint}${id}/`);
+}
+
+export const questionService = {
+  list: getQuestions,
+  create: createQuestion,
+  update: updateQuestion,
+  remove: deleteQuestion,
+};

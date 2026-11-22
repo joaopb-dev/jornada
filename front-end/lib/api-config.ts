@@ -2,22 +2,19 @@ export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127
 
 /**
  * Modo de mocking (dev):
- * - `enabled`  → demo completa: MSW cuida de tudo (auth, catálogo, agenda, arena).
- * - `catalog`  → modo híbrido: catálogo e agenda mockados; **auth e arena
- *   reais** (Django). É o modo do `.env` por padrão — a tela de Chefes
- *   funciona com o backend de verdade.
- * - `disabled` → sem MSW: tudo real.
+ * - `enabled`  → demo completa sem backend: MSW cuida de auth, agenda e arena.
+ * - `disabled` → sem MSW: tudo real (Django). É o padrão do `.env` — todas
+ *   as telas de professor falam com a API real (ADR-024).
  * Produção nunca mocka (`NODE_ENV === "development"`).
  */
-export type MockingMode = "enabled" | "catalog" | "disabled";
+export type MockingMode = "enabled" | "disabled";
 
 const rawMode = process.env.NEXT_PUBLIC_API_MOCKING;
 
-export const MOCKING_MODE: MockingMode =
-  rawMode === "enabled" ? "enabled" : rawMode === "catalog" ? "catalog" : "disabled";
+export const MOCKING_MODE: MockingMode = rawMode === "enabled" ? "enabled" : "disabled";
 
 /** Demo completa (tudo mockado). */
 export const MOCKING_ENABLED = process.env.NODE_ENV === "development" && MOCKING_MODE === "enabled";
 
-/** MSW ativo em qualquer modo de mock (híbrido inclusive). */
-export const MSW_ACTIVE = process.env.NODE_ENV === "development" && MOCKING_MODE !== "disabled";
+/** MSW ativo (somente a demo `enabled`). */
+export const MSW_ACTIVE = process.env.NODE_ENV === "development" && MOCKING_MODE === "enabled";

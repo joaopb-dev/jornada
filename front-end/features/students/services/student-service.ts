@@ -1,23 +1,37 @@
 import { api } from "@/lib/api";
-import { studentSchema } from "../schemas/student";
-import type { Student } from "@/features/students";
+import { studentSchema, type Student, type StudentWrite } from "../schemas/student";
 
-// Provisional MSW contract: adapt this feature's calls to the Django DTO later.
+const endpoint = "/students/";
+
+/** `GET /api/students/` — leitura pública, ordenada por nome. */
 export async function getStudents(signal?: AbortSignal): Promise<Student[]> {
-  const { data } = await api.get("/mock-catalog/students/", { signal });
+  const { data } = await api.get(endpoint, { signal });
   return studentSchema.array().parse(data);
 }
 
-// The current mock uses PUT as upsert; this is not Django's create contract.
-export async function saveStudent(item: Student): Promise<Student> {
-  const payload = studentSchema.parse(item);
-  const { data } = await api.put(`/mock-catalog/students/${encodeURIComponent(payload.id)}/`, payload);
+/** `POST /api/students/` — cria; matrícula única de 6 dígitos (regra do servidor). */
+export async function createStudent(payload: StudentWrite): Promise<Student> {
+  const { data } = await api.post(endpoint, payload);
   return studentSchema.parse(data);
 }
 
-export async function deleteStudent(id: string): Promise<void> {
-  await api.delete(`/mock-catalog/students/${encodeURIComponent(id)}/`);
+/** `PATCH /api/students/{id}/` — altera só o que foi enviado. */
+export async function updateStudent(
+  id: number,
+  payload: Partial<StudentWrite> & { group?: number | null },
+): Promise<Student> {
+  const { data } = await api.patch(`${endpoint}${id}/`, payload);
+  return studentSchema.parse(data);
 }
 
-// Preserve existing consumers while keeping HTTP operations explicit above.
-export const studentService = { list: getStudents, save: saveStudent, remove: deleteStudent };
+/** `DELETE /api/students/{id}/` */
+export async function deleteStudent(id: number): Promise<void> {
+  await api.delete(`${endpoint}${id}/`);
+}
+
+export const studentService = {
+  list: getStudents,
+  create: createStudent,
+  update: updateStudent,
+  remove: deleteStudent,
+};

@@ -1,23 +1,34 @@
 import { api } from "@/lib/api";
-import { skillSchema } from "../schemas/skill";
-import type { Skill } from "@/features/skills";
+import { skillSchema, type Skill, type SkillWrite } from "../schemas/skill";
 
-// Provisional MSW contract: adapt this feature's calls to the Django DTO later.
+const endpoint = "/spells/";
+
+/** `GET /api/spells/` — leitura pública do grimório. */
 export async function getSkills(signal?: AbortSignal): Promise<Skill[]> {
-  const { data } = await api.get("/mock-catalog/skills/", { signal });
+  const { data } = await api.get(endpoint, { signal });
   return skillSchema.array().parse(data);
 }
 
-// The current mock uses PUT as upsert; this is not Django's create contract.
-export async function saveSkill(item: Skill): Promise<Skill> {
-  const payload = skillSchema.parse(item);
-  const { data } = await api.put(`/mock-catalog/skills/${encodeURIComponent(payload.id)}/`, payload);
+/** `POST /api/spells/` — cria (custo 2/3/5 e dado XdY validados no servidor). */
+export async function createSkill(payload: SkillWrite): Promise<Skill> {
+  const { data } = await api.post(endpoint, payload);
   return skillSchema.parse(data);
 }
 
-export async function deleteSkill(id: string): Promise<void> {
-  await api.delete(`/mock-catalog/skills/${encodeURIComponent(id)}/`);
+/** `PATCH /api/spells/{id}/` — altera só o que foi enviado. */
+export async function updateSkill(id: number, payload: Partial<SkillWrite>): Promise<Skill> {
+  const { data } = await api.patch(`${endpoint}${id}/`, payload);
+  return skillSchema.parse(data);
 }
 
-// Preserve existing consumers while keeping HTTP operations explicit above.
-export const skillService = { list: getSkills, save: saveSkill, remove: deleteSkill };
+/** `DELETE /api/spells/{id}/` */
+export async function deleteSkill(id: number): Promise<void> {
+  await api.delete(`${endpoint}${id}/`);
+}
+
+export const skillService = {
+  list: getSkills,
+  create: createSkill,
+  update: updateSkill,
+  remove: deleteSkill,
+};

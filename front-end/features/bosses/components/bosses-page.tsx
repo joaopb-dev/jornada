@@ -1,24 +1,24 @@
 "use client";
 
 import { BossForm } from "./boss-form";
-import { upsertBoss, removeBoss } from "@/lib/catalog-mutations";
+import { deleteBoss, getBosses, updateBoss } from "@/features/bosses/services/boss-service";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Confirm, EmptyState, PageHeader, PageState, Scroll } from "@/features/journey/components/ui";
-import { useCatalogLoad } from "@/hooks/use-catalog-load";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { apiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
-import { useJornada } from "@/stores/journey-store";
-import type { Boss, BossSkill } from "@/features/bosses";
+import type { Boss, BossAbility } from "@/features/bosses";
 import { EFFECT_SHORT_LABELS, TRIGGER_LABELS } from "../constants/bosses-page";
 import { Pencil, Plus, Skull, Trash2 } from "@/components/icons/rpg-icons";
 import { useState } from "react";
 import { toast } from "sonner";
 
 /** Resumo executável da habilidade (valor + condição), como no card da raid. */
-function skillParams(s: BossSkill): string {
+function skillParams(s: BossAbility): string {
   const parts: string[] = [];
   switch (s.effect) {
     case "PENALTY": parts.push(`−${s.value} Dano Base`); break;
@@ -55,7 +55,7 @@ function BossCard({
   const [failed, setFailed] = useState(false);
 
   return (
-    <Scroll className={cn("flex flex-col", !boss.active && "opacity-70")}>
+    <Scroll className={cn("flex flex-col", !boss.is_active && "opacity-70")}>
       {/* Identidade (emblema + nome + selo), como no card da raid */}
       <div className="flex items-start gap-3">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-destructive/50 bg-destructive/10">
@@ -63,7 +63,7 @@ function BossCard({
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-            {boss.active ? "Chefe da jornada" : "Chefe fora do sorteio"}
+            {boss.is_active ? "Chefe da jornada" : "Chefe fora do sorteio"}
           </p>
           <h3 className="truncate font-display text-xl text-foreground">{boss.name}</h3>
           <p className="truncate text-xs text-muted-foreground">{boss.specialty}</p>
@@ -87,12 +87,12 @@ function BossCard({
         </span>
         <div
           className="h-4 flex-1 overflow-hidden rounded-full border border-border bg-muted"
-          role="meter" aria-valuenow={boss.hp} aria-valuemax={boss.hp} aria-valuemin={0}
+          role="meter" aria-valuenow={boss.max_hp} aria-valuemax={boss.max_hp} aria-valuemin={0}
         >
           <div className="h-full w-full rounded-full bg-gradient-to-r from-destructive/75 via-destructive to-destructive/90" />
         </div>
         <span className="font-display text-xs font-semibold text-foreground">
-          {boss.hp} / {boss.hp}
+          {boss.max_hp} / {boss.max_hp}
         </span>
       </div>
 
@@ -115,8 +115,8 @@ function BossCard({
         <p className="font-reading text-sm text-foreground">{boss.description}</p>
 
         <ul className="space-y-2 border-t border-border pt-3">
-          {boss.skills.map((s, i) => (
-            <li key={i} className="rounded-md border border-border/60 bg-background px-3 py-2">
+          {boss.abilities.map((s, i) => (
+            <li key={s.id ?? i} className="rounded-md border border-border/60 bg-background px-3 py-2">
               <div className="flex flex-wrap items-center gap-1.5">
                 <p className="text-sm font-medium text-foreground">{s.name}</p>
                 <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[0.65rem] text-muted-foreground">
@@ -133,8 +133,8 @@ function BossCard({
         </ul>
 
         <label className="mt-auto flex items-center justify-between rounded-md border border-border/60 bg-background px-3 py-2 text-sm text-foreground">
-          <span>{boss.active ? "Ativo no sorteio" : "Fora do sorteio"}</span>
-          <Switch checked={boss.active} onCheckedChange={(c) => onToggle(boss, c)} />
+          <span>{boss.is_active ? "Ativo no sorteio" : "Fora do sorteio"}</span>
+          <Switch checked={boss.is_active} onCheckedChange={(c) => onToggle(boss, c)} />
         </label>
       </div>
     </Scroll>
@@ -142,8 +142,8 @@ function BossCard({
 }
 
 function Chefes() {
-  const { status, retry } = useCatalogLoad();
-  const { bosses } = useJornada();
+  const { data, status, refresh, retry } = useApiQuery(getBosses);
+  const bosses = data ?? [];
   const [editing, setEditing] = useState<Boss | "new" | null>(null);
   const [deleting, setDeleting] = useState<Boss | null>(null);
 
@@ -162,10 +162,14 @@ function Chefes() {
             boss={b}
             onEdit={setEditing}
             onDelete={setDeleting}
-            onToggle={async (boss, active) => {
-              if (await upsertBoss({ ...boss, active })) {
-                toast.success(active ? `${boss.name} entra no sorteio.` : `${boss.name} sai do sorteio.`);
-              }
+            onToggle={(boss, active) => {
+              updateBoss(boss.id, { is_active: active }).then(
+                () => {
+                  toast.success(active ? `${boss.name} entra no sorteio.` : `${boss.name} sai do sorteio.`);
+                  refresh();
+                },
+                (error: unknown) => { toast.error(apiErrorMessage(error, "Não foi possível alterar o sorteio.")); },
+              );
             }}
           />
         ))}
@@ -176,18 +180,19 @@ function Chefes() {
             <SheetTitle className="font-display text-xl">{editing === "new" ? "Novo chefe" : "Editar chefe"}</SheetTitle>
             <SheetDescription className="font-reading">Vida e habilidades punitivas com gatilhos executáveis.</SheetDescription>
           </SheetHeader>
-          {editing && <BossForm key={editing === "new" ? "n" : editing.id} initial={editing === "new" ? null : editing} onDone={() => setEditing(null)} />}
+          {editing && <BossForm key={editing === "new" ? "n" : editing.id} initial={editing === "new" ? null : editing} onDone={() => { setEditing(null); refresh(); }} />}
         </SheetContent>
       </Sheet>
       <Confirm
         open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}
         title="Excluir chefe?" description={deleting?.name ?? ""}
         confirmLabel="Excluir" destructive
-        onConfirm={async () => {
-          if (deleting && await removeBoss(deleting.id)) {
-            toast.success("Chefe removido.");
-            setDeleting(null);
-          }
+        onConfirm={() => {
+          if (!deleting) return;
+          deleteBoss(deleting.id).then(
+            () => { toast.success("Chefe removido."); setDeleting(null); refresh(); },
+            (error: unknown) => { toast.error(apiErrorMessage(error, "Não foi possível remover o chefe.")); },
+          );
         }}
       />
     </PageState>

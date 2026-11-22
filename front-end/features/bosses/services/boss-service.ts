@@ -1,23 +1,34 @@
 import { api } from "@/lib/api";
-import { bossSchema } from "../schemas/boss";
-import type { Boss } from "@/features/bosses";
+import { bossSchema, type Boss, type BossWrite } from "../schemas/boss";
 
-// Provisional MSW contract: adapt this feature's calls to the Django DTO later.
+const endpoint = "/bosses/";
+
+/** `GET /api/bosses/` — leitura pública do bestiário (com habilidades). */
 export async function getBosses(signal?: AbortSignal): Promise<Boss[]> {
-  const { data } = await api.get("/mock-catalog/bosses/", { signal });
+  const { data } = await api.get(endpoint, { signal });
   return bossSchema.array().parse(data);
 }
 
-// The current mock uses PUT as upsert; this is not Django's create contract.
-export async function saveBoss(item: Boss): Promise<Boss> {
-  const payload = bossSchema.parse(item);
-  const { data } = await api.put(`/mock-catalog/bosses/${encodeURIComponent(payload.id)}/`, payload);
+/** `POST /api/bosses/` — cria com as habilidades aninhadas. */
+export async function createBoss(payload: BossWrite): Promise<Boss> {
+  const { data } = await api.post(endpoint, payload);
   return bossSchema.parse(data);
 }
 
-export async function deleteBoss(id: string): Promise<void> {
-  await api.delete(`/mock-catalog/bosses/${encodeURIComponent(id)}/`);
+/** `PATCH /api/bosses/{id}/` — `abilities` substitui as do chefe. */
+export async function updateBoss(id: number, payload: Partial<BossWrite> & { is_active?: boolean }): Promise<Boss> {
+  const { data } = await api.patch(`${endpoint}${id}/`, payload);
+  return bossSchema.parse(data);
 }
 
-// Preserve existing consumers while keeping HTTP operations explicit above.
-export const bossService = { list: getBosses, save: saveBoss, remove: deleteBoss };
+/** `DELETE /api/bosses/{id}/` */
+export async function deleteBoss(id: number): Promise<void> {
+  await api.delete(`${endpoint}${id}/`);
+}
+
+export const bossService = {
+  list: getBosses,
+  create: createBoss,
+  update: updateBoss,
+  remove: deleteBoss,
+};

@@ -1,2 +1,2 @@
 export { StudentsPage } from "./components/students-page";
-export type { Student } from "./types/students";
+export type { Student, StudentWrite } from "./schemas/student";

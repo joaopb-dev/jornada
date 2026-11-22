@@ -1,8 +1,9 @@
 "use client";
 
 import { HeroForm } from "./hero-form";
-import { removeHero } from "@/lib/catalog-mutations";
-import { newId } from "@/stores/journey-store";
+import { deleteHero, getHeroes } from "@/features/heroes/services/hero-service";
+import { getSkills } from "@/features/skills/services/skill-service";
+import { apiErrorMessage } from "@/lib/api-error";
 import { toast } from "sonner";
 
 
@@ -10,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SkillCard } from "@/features/journey/components/skill-card";
 import { Confirm, EmptyState, PageHeader, PageState, Scroll } from "@/features/journey/components/ui";
-import { useCatalogLoad } from "@/hooks/use-catalog-load";
-import { useJornada } from "@/stores/journey-store";
+import { useApiQuery } from "@/hooks/use-api-query";
 import type { Hero } from "@/features/heroes";
 import { Pencil, Plus, Shield, Trash2 } from "@/components/icons/rpg-icons";
 import { Crest } from "@/features/journey/components/crest";
@@ -29,14 +29,24 @@ function Attr({ label, value }: { label: string; value: number }) {
 }
 
 function Herois() {
-  const { status, retry } = useCatalogLoad();
-  const { heroes, skills } = useJornada();
-  const [editing, setEditing] = useState<Hero | null>(null);
+  const heroesQuery = useApiQuery(getHeroes);
+  const skillsQuery = useApiQuery(getSkills);
+  const queries = [heroesQuery, skillsQuery];
+  // Os cards de habilidade vêm do grimório: as duas queries juntas.
+  const status = queries.some((q) => q.status === "error")
+    ? "error"
+    : queries.some((q) => q.status === "loading")
+      ? "loading"
+      : "ready";
+  const retry = () => queries.forEach((q) => q.retry());
+  const heroes = heroesQuery.data ?? [];
+  const skills = skillsQuery.data ?? [];
+  const [editing, setEditing] = useState<Hero | "new" | null>(null);
   const [deleting, setDeleting] = useState<Hero | null>(null);
 
   return (
     <PageState status={status} retry={retry}>
-      <PageHeader title="Heróis" description="Cada grupo escolhe um herói por missão. Ataque fere o chefe; suporte protege a Aliança." action={<Button onClick={() => setEditing({ id: newId("h"), name: "", heroClass: "", role: "Ataque", description: "", passive: "", attributes: { forca: 0, sabedoria: 0, carisma: 0 }, skillIds: [] })}><Plus /> Novo herói</Button>} />
+      <PageHeader title="Heróis" description="Cada grupo escolhe um herói por missão. Ataque fere o chefe; suporte protege a Aliança." action={<Button onClick={() => setEditing("new")}><Plus /> Novo herói</Button>} />
       {heroes.length === 0 && <EmptyState title="Nenhum herói cadastrado" hint="Cadastre o primeiro herói." />}
       <div className="grid gap-6 md:grid-cols-2">
         {heroes.map((h) => (
@@ -48,7 +58,7 @@ function Herois() {
                 </div>
                 <div>
                   <h3 className="text-xl leading-tight">{h.name}</h3>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">{h.heroClass} · {h.role}</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">{h.hero_class} · {h.role}</p>
                 </div>
               </div>
               <div className="flex"><Button variant="ghost" size="icon" aria-label={`Editar ${h.name}`} onClick={() => setEditing(h)}><Pencil /></Button><Button variant="ghost" size="icon" aria-label={`Excluir ${h.name}`} onClick={() => setDeleting(h)}><Trash2 /></Button></div>
@@ -59,10 +69,10 @@ function Herois() {
               <Attr label="Sabedoria" value={h.attributes.sabedoria} />
               <Attr label="Carisma" value={h.attributes.carisma} />
             </div>
-            <p className="text-sm"><span className="font-display font-semibold">Passiva: </span><span className={h.passiveReview ? "font-reading italic text-muted-foreground" : "font-reading"}>{h.passive}</span></p>
+            <p className="text-sm"><span className="font-display font-semibold">Passiva: </span><span className={h.passive.includes("[revisar]") ? "font-reading italic text-muted-foreground" : "font-reading"}>{h.passive}</span></p>
             <div className="grid gap-2">
-              {skills.filter((s) => h.skillIds.includes(s.id)).sort((a, b) => a.cost - b.cost).map((s) => <SkillCard key={s.id} skill={s} />)}
-              {h.skillIds.length === 0 && <p className="font-reading text-sm text-muted-foreground">Nenhuma habilidade atribuída.</p>}
+              {skills.filter((s) => h.spells.includes(s.id)).sort((a, b) => a.cost - b.cost).map((s) => <SkillCard key={s.id} skill={s} />)}
+              {h.spells.length === 0 && <p className="font-reading text-sm text-muted-foreground">Nenhuma habilidade atribuída.</p>}
             </div>
           </Scroll>
         ))}
@@ -70,13 +80,20 @@ function Herois() {
       <Sheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-md">
           <SheetHeader>
-            <SheetTitle className="font-display text-xl">Editar {editing?.name}</SheetTitle>
+            <SheetTitle className="font-display text-xl">{editing === "new" ? "Novo herói" : `Editar ${editing?.name}`}</SheetTitle>
             <SheetDescription className="font-reading">Ficha e habilidades atribuídas.</SheetDescription>
           </SheetHeader>
-          {editing && <HeroForm key={editing.id} hero={editing} onDone={() => setEditing(null)} />}
+          {editing && <HeroForm key={editing === "new" ? "n" : editing.id} hero={editing === "new" ? null : editing} skills={skills} onDone={() => { setEditing(null); heroesQuery.refresh(); }} />}
         </SheetContent>
       </Sheet>
-      <Confirm open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)} title="Excluir herói?" description={deleting?.name ?? ""} confirmLabel="Excluir" destructive onConfirm={async () => { if (deleting && await removeHero(deleting.id)) { toast.success("Herói removido."); setDeleting(null); } }} />
+      <Confirm open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)} title="Excluir herói?" description={deleting?.name ?? ""} confirmLabel="Excluir" destructive
+        onConfirm={() => {
+          if (!deleting) return;
+          deleteHero(deleting.id).then(
+            () => { toast.success("Herói removido."); setDeleting(null); heroesQuery.refresh(); },
+            (error: unknown) => { toast.error(apiErrorMessage(error, "Não foi possível remover o herói.")); },
+          );
+        }} />
     </PageState>
   );
 }

@@ -1,23 +1,41 @@
 import { api } from "@/lib/api";
-import { heroSchema } from "../schemas/hero";
-import type { Hero } from "@/features/heroes";
+import { heroSchema, type Hero, type HeroWrite } from "../schemas/hero";
 
-// Provisional MSW contract: adapt this feature's calls to the Django DTO later.
+const endpoint = "/heroes/";
+
+/** `GET /api/heroes/` — leitura pública do bestiário de heróis. */
 export async function getHeroes(signal?: AbortSignal): Promise<Hero[]> {
-  const { data } = await api.get("/mock-catalog/heroes/", { signal });
+  const { data } = await api.get(endpoint, { signal });
   return heroSchema.array().parse(data);
 }
 
-// The current mock uses PUT as upsert; this is not Django's create contract.
-export async function saveHero(item: Hero): Promise<Hero> {
-  const payload = heroSchema.parse(item);
-  const { data } = await api.put(`/mock-catalog/heroes/${encodeURIComponent(payload.id)}/`, payload);
+/**
+ * `POST /api/heroes/` — cria a ficha. `group`/`journey` vão **explícitos**
+ * (`null` = modelo avulso do catálogo; sem a chave o servidor exige o campo).
+ */
+export async function createHero(payload: HeroWrite): Promise<Hero> {
+  const { data } = await api.post(endpoint, payload);
   return heroSchema.parse(data);
 }
 
-export async function deleteHero(id: string): Promise<void> {
-  await api.delete(`/mock-catalog/heroes/${encodeURIComponent(id)}/`);
+/**
+ * `PATCH /api/heroes/{id}/` — altera só o que foi enviado; ligar a uma
+ * corrida é `{group, journey}` e devolver ao catálogo é `{group: null,
+ * journey: null}`.
+ */
+export async function updateHero(id: number, payload: Partial<HeroWrite>): Promise<Hero> {
+  const { data } = await api.patch(`${endpoint}${id}/`, payload);
+  return heroSchema.parse(data);
 }
 
-// Preserve existing consumers while keeping HTTP operations explicit above.
-export const heroService = { list: getHeroes, save: saveHero, remove: deleteHero };
+/** `DELETE /api/heroes/{id}/` */
+export async function deleteHero(id: number): Promise<void> {
+  await api.delete(`${endpoint}${id}/`);
+}
+
+export const heroService = {
+  list: getHeroes,
+  create: createHero,
+  update: updateHero,
+  remove: deleteHero,
+};
