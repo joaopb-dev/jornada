@@ -59,3 +59,32 @@ export function Crest({ spec, size = 40, className, label }: CrestProps) {
     </svg>
   );
 }
+
+/**
+ * Contorno **pontilhado cinza** do escudo: denota que a linha não tem
+ * brasão porque o aventureiro está **sem equipe** — em vez de exibir o
+ * brasão padrão (que mentiria dizendo "tem equipe").
+ */
+export function CrestPlaceholder({ size = 40, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 64 72"
+      width={size}
+      height={(size * 72) / 64}
+      className={className}
+      aria-hidden
+      focusable="false"
+      data-crest="placeholder"
+    >
+      <path
+        d={shapeOf("classico").path}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+        strokeDasharray="5 5"
+        className="text-muted-foreground"
+      />
+    </svg>
+  );
+}

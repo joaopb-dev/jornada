@@ -1,4 +1,4 @@
-export { Crest } from "./components/crest";
+export { Crest, CrestPlaceholder } from "./components/crest";
 export { CrestPicker } from "./components/crest-picker";
 export { crestSchema, crestSchemaOptional } from "./schemas/crest";
 export {
