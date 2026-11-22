@@ -18,7 +18,7 @@ class BossAbilityBriefSerializer(serializers.ModelSerializer):
 
 
 class BossBriefSerializer(serializers.ModelSerializer):
-    """Resumo do chefe exibido no estado da raid (PV + habilidades)."""
+    """Resumo do chefe exibido no estado da raid (PV + arte + habilidades)."""
 
     abilities = BossAbilityBriefSerializer(many=True, read_only=True)
 
@@ -26,7 +26,7 @@ class BossBriefSerializer(serializers.ModelSerializer):
         from apps.bosses.models import Boss
 
         model = Boss
-        fields = ["id", "name", "max_hp", "abilities"]
+        fields = ["id", "name", "max_hp", "image", "abilities"]
 
 
 class ArenaEventSerializer(serializers.ModelSerializer):

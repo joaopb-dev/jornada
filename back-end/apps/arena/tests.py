@@ -389,6 +389,8 @@ class ArenaAbilityApiTests(TestCase):
         # desempenho derivado: (6*3)*10/18 = 10 -> 1000 * 1.5 = 1500; -10 da penalidade
         self.assertEqual(team["base_damage"], 1500 - 10)
         self.assertTrue(any(e["kind"] == "ABILITY" for e in state.data["events"]))
+        # arte do chefe exposta no estado (o card lê `Boss.image`)
+        self.assertIn("image", state.data["boss"])
         # habilidades do chefe expostas no estado (para o card exibir)
         self.assertEqual(
             [a["name"] for a in state.data["boss"]["abilities"]],

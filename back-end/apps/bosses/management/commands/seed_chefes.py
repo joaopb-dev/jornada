@@ -1,7 +1,8 @@
 """Carrega os 7 chefes da landing com as habilidades executáveis (idempotente).
 
 Os chefes da landing page (``front-end/mocks/landing-personagens.ts``) já vêm
-pré-criados: este comando espelha esse catálogo no banco — nome, PV, descrição
+pré-criados: este comando espelha esse catálogo no banco — nome, PV, arte
+(``/personagens/…``, servida pelo Next), descrição
 e as 3 habilidades de cada chefe com os parâmetros que o motor executa
 (``apps.bosses.engine``). Rodar de novo não duplica nem apaga habilidades
 customizadas do professor (upsert por nome).
@@ -23,6 +24,7 @@ LEGACY_ALIASES = {
 CHEFES = [
     {
         "name": "Mothman, o Sábio",
+        "image": "/personagens/mothman.jpg",
         "max_hp": 150,
         "description": (
             "Enfraquece o dano da Aliança diante de falhas em tempo, "
@@ -69,6 +71,7 @@ CHEFES = [
     },
     {
         "name": "Rei Rato",
+        "image": "/personagens/rei-rato.jpg",
         "max_hp": 150,
         "description": (
             "Penaliza falhas de tempo, conceitos e respostas durante a "
@@ -115,6 +118,7 @@ CHEFES = [
     },
     {
         "name": "Leshy",
+        "image": "/personagens/leshy.jpg",
         "max_hp": 130,
         "description": (
             "Recupera vida com falhas em fundamentos e perguntas erradas; "
@@ -156,6 +160,7 @@ CHEFES = [
     },
     {
         "name": "A Sombra Espreitadora",
+        "image": "/personagens/sombra-espreitadora.jpg",
         "max_hp": 130,
         "description": (
             "Drena dano da Aliança, ganha vida com falhas e enfraquece os "
@@ -198,6 +203,7 @@ CHEFES = [
     },
     {
         "name": "O Colecionador de Ossos",
+        "image": "/personagens/colecionador-de-ossos.jpg",
         "max_hp": 130,
         "description": (
             "Reduz o Dano Base da Aliança com notas baixas e impõe "
@@ -243,6 +249,7 @@ CHEFES = [
     },
     {
         "name": "O Colecionador de Faces",
+        "image": "/personagens/colecionador-de-faces.jpg",
         "max_hp": 130,
         "description": (
             "Castiga notas variadas e cada pergunta errada; encarece o "
@@ -287,6 +294,7 @@ CHEFES = [
     },
     {
         "name": "O Mago Corrompido",
+        "image": "/personagens/mago-corrompido.jpg",
         "max_hp": 200,
         "description": (
             "Boss especial: surge quando os heróis repetem a mesma classe "
@@ -353,6 +361,7 @@ class Command(BaseCommand):
         boss.max_hp = spec["max_hp"]
         boss.description = spec["description"]
         boss.is_active = spec["is_active"]
+        boss.image = spec["image"]
         boss.save()
         return boss, True
 

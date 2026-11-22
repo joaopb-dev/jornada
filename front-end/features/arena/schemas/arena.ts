@@ -104,6 +104,8 @@ export const arenaBossSchema = z.object({
   id: z.number(),
   name: z.string(),
   max_hp: z.number(),
+  /** Arte em `/personagens/` servida pelo Next (`Boss.image`). */
+  image: z.string(),
   abilities: z.array(arenaAbilitySchema),
 });
 

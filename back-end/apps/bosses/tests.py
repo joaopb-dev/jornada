@@ -299,6 +299,7 @@ class SeedChefesTests(TestCase):
         self.assertEqual(BossAbility.objects.count(), 21)
         mothman = Boss.objects.get(name="Mothman, o Sábio")
         self.assertEqual(mothman.max_hp, 150)
+        self.assertEqual(mothman.image, "/personagens/mothman.jpg")
         self.assertEqual(mothman.abilities.count(), 3)
         mago = Boss.objects.get(name="O Mago Corrompido")
         self.assertEqual(mago.max_hp, 200)

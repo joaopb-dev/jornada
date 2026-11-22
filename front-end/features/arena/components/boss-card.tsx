@@ -11,17 +11,6 @@ import { FloatingNumbers, useDeltaFloats } from "./float-number";
 import { StatusBadge } from "./status-badge";
 import type { ArenaState } from "../schemas/arena";
 
-/** Arte dos chefes semeados (`seed_chefes`) — placeholders locais. */
-const BOSS_ART: Record<string, string> = {
-  "Mothman, o Sábio": "/personagens/mothman.jpg",
-  "Rei Rato": "/personagens/rei-rato.jpg",
-  Leshy: "/personagens/leshy.jpg",
-  "A Sombra Espreitadora": "/personagens/sombra-espreitadora.jpg",
-  "O Colecionador de Ossos": "/personagens/colecionador-de-ossos.jpg",
-  "O Colecionador de Faces": "/personagens/colecionador-de-faces.jpg",
-  "O Mago Corrompido": "/personagens/mago-corrompido.jpg",
-};
-
 /** Faixa horizontal dos números de PV no cartão do chefe (constante estável). */
 const HP_SPREAD: readonly [number, number] = [18, 78];
 
@@ -33,7 +22,8 @@ const HP_SPREAD: readonly [number, number] = [18, 78];
 export function BossCard({ state }: { state: ArenaState }) {
   const dealt = Math.max(0, state.max_hp - state.hp);
   const pct = state.max_hp > 0 ? Math.round((state.hp / state.max_hp) * 100) : 0;
-  const art = BOSS_ART[state.boss.name];
+  // Arte do chefe vem do banco (`Boss.image` no estado da raid) — sem mapa no front.
+  const art = state.boss.image;
   const [artFailed, setArtFailed] = useState(false);
 
   // Sacode a barra quando o chefe perde PV (mesmo efeito do HpBar da jornada).

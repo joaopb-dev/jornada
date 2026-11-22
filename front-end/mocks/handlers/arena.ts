@@ -47,6 +47,8 @@ interface MockBoss {
   id: number;
   name: string;
   max_hp: number;
+  /** Espela `Boss.image` (arte em `/personagens/`, servida pelo Next). */
+  image: string;
   abilities: MockAbility[];
 }
 
@@ -149,49 +151,49 @@ function ability(
 
 const BOSSES: MockBoss[] = [
   {
-    id: 1, name: "Mothman, o Sábio", max_hp: 150, abilities: [
+    id: 1, name: "Mothman, o Sábio", max_hp: 150, image: "/personagens/mothman.jpg", abilities: [
       ability(1, "Olhar Hipnótico", "TEMPO", "PENALTY", 10, "Se a equipe não atingir a nota máxima em Tempo, a Aliança perde 10 pontos de Dano Base."),
       ability(2, "Asas de Sombras", "CONCEITO", "CUT", 50, "Se mais de uma equipe tirar Parcial ou Ausente em Paradigma ou Características, o dano extra dela é cortado pela metade.", { threshold: 2, scope: "ALLIANCE", min_count: 2 }),
       ability(3, "Enxame Noturno", "PERGUNTAS", "PENALTY", 10, "A cada duas perguntas erradas, a Aliança perde 10 pontos de Dano Base.", { every: 2 }),
     ],
   },
   {
-    id: 2, name: "Rei Rato", max_hp: 150, abilities: [
+    id: 2, name: "Rei Rato", max_hp: 150, image: "/personagens/rei-rato.jpg", abilities: [
       ability(4, "Olhar Hipnótico", "TEMPO", "PENALTY", 10, "Se a equipe não atingir a nota máxima em Tempo, a Aliança perde 10 pontos de Dano Base."),
       ability(5, "Asas de Sombras", "CONCEITO", "CUT", 50, "Se ao menos uma equipe tirar Parcial ou Ausente em Paradigma ou Características, o dano extra dela é cortado pela metade.", { threshold: 2, scope: "ALLIANCE", min_count: 1 }),
       ability(6, "Enxame Noturno", "PERGUNTAS", "PENALTY", 7, "A cada pergunta errada, a Aliança perde 7 pontos de Dano Base."),
     ],
   },
   {
-    id: 3, name: "Leshy", max_hp: 130, abilities: [
+    id: 3, name: "Leshy", max_hp: 130, image: "/personagens/leshy.jpg", abilities: [
       ability(7, "Raízes do Passado", "FUNDAMENTOS", "HEAL", 5, "Se a equipe tirar menos que a nota máxima em Histórico ou Paradigma, Leshy ganha imediatamente +5 PV."),
       ability(8, "Esporos Confusos", "DEMONSTRACAO", "DISADV", 50, "Sem a nota máxima em Principais Usos ou código, o dano extra dessa equipe é reduzido em 50% (desvantagem)."),
       ability(9, "Fungo do Dreno", "PERGUNTAS", "HEAL", 5, "A cada pergunta errada na Fase 2, Leshy recupera 5 PV."),
     ],
   },
   {
-    id: 4, name: "A Sombra Espreitadora", max_hp: 130, abilities: [
+    id: 4, name: "A Sombra Espreitadora", max_hp: 130, image: "/personagens/sombra-espreitadora.jpg", abilities: [
       ability(10, "Dreno de Vitalidade", "FUNDAMENTOS", "HEAL", 5, "Se a equipe tirar menos que a nota máxima em Histórico ou Paradigma, a Sombra recupera +5 PV."),
       ability(11, "Emboscada nas Sombras", "DEMONSTRACAO", "CUT", 50, "Sem a nota máxima em Principais Usos ou código, o dano extra dessa equipe é cortado pela metade."),
       ability(12, "Ataque do Saqueador", "PERGUNTAS", "DRAIN", 5, "A cada pergunta errada, drena 5 de Dano Base da Aliança e soma ao próprio HP."),
     ],
   },
   {
-    id: 5, name: "O Colecionador de Ossos", max_hp: 130, abilities: [
+    id: 5, name: "O Colecionador de Ossos", max_hp: 130, image: "/personagens/colecionador-de-ossos.jpg", abilities: [
       ability(13, "Sopro de Ácido", "GERAL", "PENALTY", 5, "Se a média dos critérios ficar abaixo de Satisfatório, a Aliança perde 5 pontos de Dano Base.", { mode: "AVERAGE", threshold: 1 }),
       ability(14, "Rajada de Vento", "TEMPO", "DISADV", 50, "Se a equipe não atingir a nota máxima em Tempo, seus dados extras de dano são reduzidos em 50% (desvantagem)."),
       ability(15, "Rugido do Medo", "PERGUNTAS", "PENALTY", 10, "A cada pergunta errada, a Aliança perde 10 pontos de Dano Base."),
     ],
   },
   {
-    id: 6, name: "O Colecionador de Faces", max_hp: 130, abilities: [
+    id: 6, name: "O Colecionador de Faces", max_hp: 130, image: "/personagens/colecionador-de-faces.jpg", abilities: [
       ability(16, "Máscara da Confusão", "GERAL", "PENALTY", 5, "Com notas muito variadas (2 níveis ou mais de diferença), a Aliança perde 5 pontos de Dano Base.", { mode: "SPREAD", threshold: 2 }),
       ability(17, "Máscara da Discórdia", "SUPORTE", "PR_COST", 2, "Habilidades de suporte custam 2 PR a mais (informativo: a raid ainda não usa o sistema de PR)."),
       ability(18, "Máscara do Silêncio", "PERGUNTAS", "PENALTY", 5, "A cada pergunta errada, a Aliança perde 5 pontos de Dano Base."),
     ],
   },
   {
-    id: 7, name: "O Mago Corrompido", max_hp: 200, abilities: [
+    id: 7, name: "O Mago Corrompido", max_hp: 200, image: "/personagens/mago-corrompido.jpg", abilities: [
       ability(19, "Distorção Temporal", "TEMPO", "DISADV", 50, "Se a média de Tempo das equipes ficar abaixo da nota máxima, todas afetadas sofrem desvantagem no dano extra.", { scope: "ALLIANCE", min_count: 1 }),
       ability(20, "Cegueira das Sombras", "CONCEITO", "DISADV", 50, "Sem a nota máxima em Paradigma ou Características, o dano extra da equipe é reduzido em 50%."),
       ability(21, "Aniquilação da Alma", "PERGUNTAS", "DRAIN", 5, "A cada pergunta errada, drena 5 de Dano Base e soma ao próprio HP."),
