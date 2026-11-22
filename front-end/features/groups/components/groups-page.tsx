@@ -3,6 +3,7 @@
 import { TeamForm } from "./team-form";
 import { removeTeam, upsertTeam } from "@/lib/catalog-mutations";
 import { Crest } from "@/features/crest";
+import { bridgeMissingTeams } from "@/features/crest/services/crest-bridge";
 
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { useCatalogLoad } from "@/hooks/use-catalog-load";
 import { useJornada } from "@/stores/journey-store";
 import type { Team } from "@/features/groups";
 import { Pencil, Plus, Trash2 } from "@/components/icons/rpg-icons";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 
@@ -26,6 +27,15 @@ function Grupos() {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [selectedTeam, setSelectedTeam] = useState("");
   const assigningStudent = students.find((student) => student.id === assigning);
+  // Ponte M-53 (uma vez por carga): cria no backend, com o brasão, as
+  // equipes que ainda não estão lá — só cria, nunca sobrescreve o que o
+  // professor gravou pela Arena; backend indisponível é silencioso.
+  const bridged = useRef(false);
+  useEffect(() => {
+    if (status !== "ready" || bridged.current || teams.length === 0) return;
+    bridged.current = true;
+    bridgeMissingTeams(teams).then(() => { /* melhor esforço, sem feedback */ });
+  }, [status, teams]);
 
   return (
     <PageState status={status} retry={retry}>

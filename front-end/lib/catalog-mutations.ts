@@ -2,6 +2,7 @@ import axios from "axios";
 import { z } from "zod";
 import { toast } from "sonner";
 import { refreshCatalog } from "./catalog-cache";
+import { bridgeTeamCrest } from "@/features/crest/services/crest-bridge";
 import { studentService } from "@/features/students/services/student-service";
 import { groupService } from "@/features/groups/services/group-service";
 import { skillService } from "@/features/skills/services/skill-service";
@@ -18,7 +19,23 @@ async function mutate(operation: () => Promise<unknown>): Promise<boolean> {
 }
 export const upsertStudent = (value: Parameters<typeof studentService.save>[0]) => mutate(() => studentService.save(value));
 export const removeStudent = (id: string) => mutate(() => studentService.remove(id));
-export const upsertTeam = (value: Parameters<typeof groupService.save>[0]) => mutate(() => groupService.save(value));
+/**
+ * Salva a equipe no catálogo e **leva o brasão ao backend** (M-53) — a
+ * Arena lê `/api/groups/`, então sem esta ponte o escudo criado aqui não
+ * aparecia lá. Sucesso local com falha no backend avisa, mas não desfaz
+ * a gravação local.
+ */
+export async function upsertTeam(value: Parameters<typeof groupService.save>[0]): Promise<boolean> {
+  const saved = await mutate(() => groupService.save(value));
+  if (!saved) return false;
+  const result = await bridgeTeamCrest(value, true);
+  if (result === "created" || result === "updated") {
+    toast.success("Brasão salvo no backend — já aparece na Arena.");
+  } else if (result === "failed") {
+    toast.error("Equipe salva, mas o brasão não chegou ao backend. Verifique o servidor e edite a equipe de novo.");
+  }
+  return true;
+}
 export const removeTeam = (id: string) => mutate(() => groupService.remove(id));
 export const upsertSkill = (value: Parameters<typeof skillService.save>[0]) => mutate(() => skillService.save(value));
 export const removeSkill = (id: string) => mutate(() => skillService.remove(id));

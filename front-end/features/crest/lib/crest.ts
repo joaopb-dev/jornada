@@ -224,7 +224,7 @@ export function crestFromApi(value: {
 }
 
 /** Spec do front → payload de `PATCH /groups/{id}/`. */
-export function crestToApi(spec: Partial<CrestSpec> | null): {
+export function crestToApi(spec?: Partial<CrestSpec> | null): {
   crest_shape: CrestShapeId;
   crest_color: CrestColorId;
   crest_symbol: CrestSymbolId;

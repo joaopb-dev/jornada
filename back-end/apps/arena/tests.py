@@ -199,6 +199,30 @@ class ArenaApiTests(TestCase):
         resp = anon_client().get(f"/api/arena/rounds/{rid}/state/")
         self.assertEqual(resp.status_code, 200)
 
+    def test_state_mostra_o_brasao_gravado_na_equipe(self):
+        """Fase F (M-52/M-53): PATCH do brasão aparece no placar ao vivo."""
+        resp = staff_client().patch(
+            f"/api/groups/{self.group.id}/",
+            {"crest_shape": "losango", "crest_color": "roxo",
+             "crest_symbol": "corvo"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        client = staff_client()
+        rid = self._create_round(client).data["id"]
+        client.post(f"/api/arena/rounds/{rid}/start/", {}, format="json")
+        client.post(
+            f"/api/arena/rounds/{rid}/attack/",
+            {"group_id": self.group.id, "correct": True, "points": 100},
+            format="json",
+        )
+        state = anon_client().get(f"/api/arena/rounds/{rid}/state/")
+        team = state.data["teams"][0]
+        self.assertEqual(team["crest_shape"], "losango")
+        self.assertEqual(team["crest_color"], "roxo")
+        self.assertEqual(team["crest_symbol"], "corvo")
+
     def test_ataque_antes_de_iniciar_erro(self):
         client = staff_client()
         created = self._create_round(client)
