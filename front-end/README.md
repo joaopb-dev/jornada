@@ -3,8 +3,9 @@
 Interface da Jornada / Debuggers & Developers, com área do professor, aventureiros,
 grupos, heróis, habilidades, chefes, perguntas e missões.
 
-O front-end pode consumir a API Django diretamente ou simular seus endpoints com
-MSW durante o desenvolvimento. Os componentes e serviços são os mesmos nos dois modos.
+O front-end consome a API Django por proxy same-origin em HTTPS (`/api` →
+Django em loopback, ver `next.config.ts`) ou simula seus endpoints com MSW
+durante o desenvolvimento. Os componentes e serviços são os mesmos nos dois modos.
 
 ## Stack
 
@@ -46,7 +47,6 @@ Se o PowerShell bloquear npm.ps1, use npm.cmd e npx.cmd no lugar de npm e npx.
 Em front-end/.env.local, configure:
 
 ~~~dotenv
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api
 NEXT_PUBLIC_API_MOCKING=enabled
 ~~~
 
@@ -56,7 +56,7 @@ Dentro de front-end, execute:
 npm run dev
 ~~~
 
-Abra [http://localhost:3000/login](http://localhost:3000/login) e use:
+Abra [https://localhost:3000/login](https://localhost:3000/login) e use:
 
 | Campo | Valor |
 | --- | --- |
@@ -84,9 +84,13 @@ o MSW não simula automaticamente qualquer endpoint.
 Em front-end/.env.local, configure:
 
 ~~~dotenv
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api
 NEXT_PUBLIC_API_MOCKING=disabled
 ~~~
+
+Não é preciso configurar a URL da API: `npm run dev` serve o site em HTTPS e
+o proxy `/api` do `next.config.ts` encaminha as requisições ao Django em
+loopback. `NEXT_PUBLIC_API_BASE_URL` só é necessária se a API rodar em outro
+domínio (aí ajuste `CORS_ALLOWED_ORIGINS` no backend).
 
 Inicie o Django em outro terminal. A partir da raiz do repositório, com o ambiente
 virtual do back-end já configurado:
@@ -102,13 +106,14 @@ No terminal do front-end:
 npm run dev
 ~~~
 
-Abra [http://localhost:3000/login](http://localhost:3000/login) e entre com uma
+Abra [https://localhost:3000/login](https://localhost:3000/login) e entre com uma
 conta existente no Django. As credenciais de demonstração só funcionam na API
 real se essa conta também estiver cadastrada nela.
 
-O CORS atual do Django permite http://localhost:3000. Caso use outra origem,
-como http://127.0.0.1:3000 ou outra porta, ajuste CORS_ALLOWED_ORIGINS em
-back-end/config/settings.py.
+No fluxo normal não há CORS: o browser fala com `/api` na própria origem
+(HTTPS) e o proxy do Next encaminha ao Django. Para consumo direto da API em
+outra origem, ajuste CORS_ALLOWED_ORIGINS em back-end/config/settings.py
+(padrão `https://localhost:3000`).
 
 Há migrations pendentes em relação aos modelos de users e groups, incluindo a
 mudança de Student entre apps. Revise essa evolução de schema antes de atualizar

@@ -185,6 +185,11 @@ Por padrão, o servidor de desenvolvimento do Django fica disponível em:
 http://127.0.0.1:8000/
 ```
 
+Essa porta é **interna**: o browser não fala com ela. O front encaminha as
+requisições de `/api` por um proxy same-origin em loopback
+(`front-end/next.config.ts`), então nenhuma credencial trafega em texto
+claro. Não exponha o Django publicamente.
+
 ### 4. Preparar e iniciar o front-end
 
 Em outro terminal:
@@ -195,13 +200,24 @@ npm install
 npm run dev
 ```
 
-A aplicação Next.js fica normalmente disponível em:
+A aplicação Next.js fica disponível em **HTTPS** (certificado self-signed
+auto-gerado em `front-end/certificates/` — aceite o aviso do navegador):
 
 ```text
-http://localhost:3000/
+https://localhost:3000/
 ```
 
-> **Integração:** confirme a URL-base da API e as variáveis de ambiente utilizadas pelo front-end antes de executar os fluxos integrados. Não inclua tokens, senhas ou credenciais no repositório.
+> **Integração:** o browser consome a API em same-origin
+> (`https://localhost:3000/api/...`); `NEXT_PUBLIC_API_BASE_URL` só é
+> necessária se a API rodar em outro domínio. Não inclua tokens, senhas ou
+> credenciais no repositório.
+
+> **Produção:** com `DJANGO_DEBUG=false` o Django habilita sozinho
+> `SECURE_SSL_REDIRECT`, cookies `Secure` e HSTS (override manual:
+> `DJANGO_HTTPS=1|0`). O `next start` não termina TLS: coloque um reverse
+> proxy HTTPS na frente, aponte `API_PROXY_ORIGIN` para o serviço interno do
+> Django (loopback/REDE privada) e defina `DJANGO_SECRET_KEY` e
+> `DJANGO_ALLOWED_HOSTS`.
 
 ## API
 

@@ -14,19 +14,23 @@ O MSW intercepta requisições HTTP. Nos endpoints integrados, os componentes n�
 Copie `.env.example` para `.env.local`, configure os valores abaixo e reinicie o Next:
 
 ```dotenv
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api
 NEXT_PUBLIC_API_MOCKING=disabled
 ```
 
+Não é preciso configurar a URL da API: em `npm run dev` o browser fala com
+`/api` na mesma origem (HTTPS) e o proxy do `next.config.ts` encaminha ao
+Django em loopback. `NEXT_PUBLIC_API_BASE_URL` só entra em jogo se a API
+rodar em outro domínio.
+
 Essa configuração vale para os contratos já compatíveis com o Django. Os endpoints provisórios de cadastro e agenda descritos abaixo ainda precisam ser adaptados antes da integração real.
 
-Execute `python manage.py runserver` no ambiente virtual do Django e `npm run dev` em `front-end`. Use um usuário cadastrado no Django. A configuração atual de CORS permite `http://localhost:3000`; abra o frontend nessa origem. Para outro host ou porta, ajuste `CORS_ALLOWED_ORIGINS` no backend antes de usar essa origem.
+Execute `python manage.py runserver` no ambiente virtual do Django e `npm run dev` em `front-end`. Use um usuário cadastrado no Django. O frontend é servido em `https://localhost:3000` (certificado self-signed — aceite o aviso). No fluxo normal não há CORS (same-origin via proxy); para consumo direto da API em outra origem, ajuste `CORS_ALLOWED_ORIGINS` no backend (padrão `https://localhost:3000`).
 
 Os valores `NEXT_PUBLIC_*` são públicos e incorporados durante a compilação. Não coloque senhas ou chaves privadas neles. Builds de produção desativam o MSW.
 
 ## Executar sem Django
 
-Defina `NEXT_PUBLIC_API_MOCKING=enabled` em `.env.local`, reinicie `npm run dev` e entre com `professor` / `jornada123`. A URL-base da API permanece igual. O Axios espera a inicialização do worker antes de enviar requisições.
+Defina `NEXT_PUBLIC_API_MOCKING=enabled` em `.env.local`, reinicie `npm run dev` e entre com `professor` / `jornada123`. A URL-base da API continua `/api` (same-origin); o Axios espera a inicialização do worker antes de enviar requisições.
 
 Os catálogos simulados e a agenda usam chaves versionadas no `localStorage`; o registro de tokens usa `sessionStorage`. Os dados ficam no navegador: não representam armazenamento compartilhado nem autorização no servidor.
 

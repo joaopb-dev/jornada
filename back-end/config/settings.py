@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 
@@ -36,6 +37,31 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() in ('1', 'true', 'yes')
 ALLOWED_HOSTS = [
     h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',') if h.strip()
 ]
+
+
+def _env_flag(name, default):
+    """Flag de ambiente: default quando ausente, senão 1/true/yes = True."""
+    raw = os.environ.get(name)
+    return default if raw is None else raw.lower() in ('1', 'true', 'yes')
+
+
+# Segurança de transporte (site em HTTPS; o browser fala só com o Next, que
+# faz proxy same-origin de /api até aqui em loopback — ver next.config.ts).
+# Com DEBUG=false (produção) as proteções abaixo ligam sozinhas; em dev/teste
+# ficam desligadas para permitir ferramentas http diretas no loopback.
+# Override explícito: DJANGO_HTTPS=1 liga, DJANGO_HTTPS=0 desliga.
+TESTING = 'test' in sys.argv
+HTTPS = _env_flag('DJANGO_HTTPS', default=not DEBUG and not TESTING)
+
+# O proxy repassa o esquema original do browser em X-Forwarded-Proto (o Next
+# sempre o define; em produção exige que o reverse proxy também o envie).
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+if HTTPS:
+    SECURE_SSL_REDIRECT = True          # recusa acesso http direto ao Django
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000      # só é emitido em respostas https
 
 
 # Application definition
@@ -152,11 +178,12 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Allows React to gather information from custom port.
+# Origem do front (o browser fala com o Next em same-origin; o proxy /api já
+# encaminha — o CORS só importa para acesso direto à API em outro domínio).
 # Em produção: CORS_ALLOWED_ORIGINS=https://meu-front.exemplo (vírgula p/ vários)
 CORS_ALLOWED_ORIGINS = [
     o.strip()
-    for o in os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+    for o in os.environ.get('CORS_ALLOWED_ORIGINS', 'https://localhost:3000').split(',')
     if o.strip()
 ]
 
@@ -182,7 +209,8 @@ SIMPLE_JWT = {
 }
 
 # Recuperação de senha: em desenvolvimento o e-mail aparece no terminal.
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+# O link aponta para o front em HTTPS (mesma origem do site).
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://localhost:3000')
 PASSWORD_RESET_TIMEOUT = 3600
 EMAIL_BACKEND = os.environ.get(
     'EMAIL_BACKEND',

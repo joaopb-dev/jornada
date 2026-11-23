@@ -1,4 +1,20 @@
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api").replace(/\/+$/, "");
+/**
+ * Base da API.
+ *
+ * - Browser: `/api` (same-origin). O proxy do `next.config.ts` encaminha para
+ *   o Django em loopback — nenhuma credencial trafega em texto claro e o
+ *   browser só fala HTTPS com o próprio Next.
+ * - Node (testes/build): URL absoluta no loopback, pois `fetch` relativo não
+ *   resolve sem uma origem.
+ *
+ * Override opcional: `NEXT_PUBLIC_API_BASE_URL` — use apenas se a API rodar
+ * em OUTRO domínio (aí o Django precisa aceitar a origem em
+ * `CORS_ALLOWED_ORIGINS`).
+ */
+const explicitBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+const fallbackBase = typeof window === "undefined" ? "http://127.0.0.1:8000/api" : "/api";
+
+export const API_BASE_URL = (explicitBase || fallbackBase).replace(/\/+$/, "");
 
 /**
  * Modo de mocking (dev):

@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 
 @override_settings(
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
-    FRONTEND_URL='http://localhost:3000',
+    FRONTEND_URL='https://localhost:3000',
 )
 class PasswordResetTests(TestCase):
     def setUp(self):
@@ -33,7 +33,7 @@ class PasswordResetTests(TestCase):
         response = self.client.post('/api/password-reset/', {'email': self.user.email}, format='json')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 1)
-        self.assertIn(f'http://localhost:3000/reset-password/{self.uid}/', mail.outbox[0].body)
+        self.assertIn(f'https://localhost:3000/reset-password/{self.uid}/', mail.outbox[0].body)
         unknown = self.client.post('/api/password-reset/', {'email': 'unknown@example.com'}, format='json')
         self.assertEqual(unknown.status_code, 200)
         self.assertEqual(unknown.data, response.data)
