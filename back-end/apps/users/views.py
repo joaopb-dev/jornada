@@ -1,16 +1,21 @@
 import secrets
 import unicodedata
 
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.db import transaction
 from django.utils.text import slugify
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import AuthenticationFailed, Throttled, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from apps.params import int_param
 
 from .models import Student
 from .permissions import AuthenticatedReadTeacherWrite, IsTeacher, is_teacher
@@ -20,6 +25,35 @@ from .serializers import (
     UserAdminSerializer,
     UserSerializer,
 )
+
+
+class LoginView(TokenObtainPairView):
+    """POST /api/token/ com limite de tentativas erradas por usuário.
+
+    Só erros contam: acertos não consomem a janela, então uma turma inteira
+    pode entrar na mesma conta-demo sem bloqueio, enquanto adivinhação de
+    senha fica presa a ``LOGIN_MAX_FAILURES`` por ``LOGIN_FAILURE_WINDOW``
+    segundos. A chave é o username (não o IP): o proxy same-origin faz o
+    Django ver todos os clientes vindos do mesmo lugar e o X-Forwarded-For
+    é forjável — por conta é estável, não spoofável e não gera bloqueio
+    coletivo. Desligado em ``manage.py test`` (``settings.TESTING``).
+    """
+
+    def post(self, request, *args, **kwargs):
+        username = str(request.data.get("username") or "").strip().lower()[:150]
+        key = f"login-failures:{username}" if username else None
+        if key and not settings.TESTING and cache.get(key, 0) >= settings.LOGIN_MAX_FAILURES:
+            raise Throttled(
+                detail="Muitas tentativas de login. Tente novamente em instantes."
+            )
+        try:
+            return super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            if key and not settings.TESTING:
+                # janela deslizante: cada falha reinicia o TTL
+                cache.set(key, cache.get(key, 0) + 1, timeout=settings.LOGIN_FAILURE_WINDOW)
+            raise
+
 
 # Sem caracteres ambíguos (0/O, 1/l/I) — a senha é repassada em papel/voz.
 _PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -85,8 +119,9 @@ class StudentViewSet(viewsets.ModelViewSet):
         if not is_teacher(self.request.user):
             return qs.filter(user=self.request.user)
         params = self.request.query_params
-        if params.get('group') is not None:
-            qs = qs.filter(group_id=params['group'])
+        group = int_param(params, 'group')
+        if group is not None:
+            qs = qs.filter(group_id=group)
         if params.get('active') is not None:
             qs = qs.filter(is_active=params['active'].lower() in ('1', 'true', 'yes'))
         return qs

@@ -187,6 +187,12 @@ CORS_ALLOWED_ORIGINS = [
     if o.strip()
 ]
 
+# Login: limite de tentativas ERRADAS por usuário (users.views.LoginView).
+# Acertos não consomem a janela — uma turma pode entrar na mesma conta-demo;
+# só erros contam. Desligado em manage.py test via settings.TESTING.
+LOGIN_MAX_FAILURES = int(os.environ.get('LOGIN_MAX_FAILURES', '10'))
+LOGIN_FAILURE_WINDOW = int(os.environ.get('LOGIN_FAILURE_WINDOW', '60'))
+
 REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'password_reset': '5/hour',

@@ -39,6 +39,21 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Baseline de segurança em TODAS as respostas do front: anti clickjacking
+  // e mime-sniffing (o Django já faz o mesmo nas respostas da API). CSP fica
+  // para depois do TLS de produção — exige nonce dos scripts inline do Next.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

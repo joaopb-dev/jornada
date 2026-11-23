@@ -7,6 +7,7 @@ from rest_framework.exceptions import NotAuthenticated, PermissionDenied, Valida
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from apps.params import int_param
 from apps.users.models import Student
 from apps.users.permissions import is_teacher, student_in_group
 
@@ -39,8 +40,9 @@ class StageViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.query_params.get("journey") is not None:
-            qs = qs.filter(journey_id=self.request.query_params["journey"])
+        journey = int_param(self.request.query_params, "journey")
+        if journey is not None:
+            qs = qs.filter(journey_id=journey)
         return qs
 
 
@@ -63,11 +65,13 @@ class GroupJourneyViewSet(viewsets.ModelViewSet):
         for field, lookup in (
             ("group", "group_id"),
             ("journey", "journey_id"),
-            ("status", "status"),
             ("student", "group__students__id"),
         ):
-            if params.get(field) is not None:
-                qs = qs.filter(**{lookup: params[field]})
+            value = int_param(params, field)
+            if value is not None:
+                qs = qs.filter(**{lookup: value})
+        if params.get("status") is not None:
+            qs = qs.filter(status=params["status"])
         return qs
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -108,8 +112,9 @@ class BattleEventViewSet(
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.query_params.get("progress") is not None:
-            qs = qs.filter(progress_id=self.request.query_params["progress"])
+        progress = int_param(self.request.query_params, "progress")
+        if progress is not None:
+            qs = qs.filter(progress_id=progress)
         return qs
 
 

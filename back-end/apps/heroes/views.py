@@ -1,5 +1,7 @@
 from rest_framework import viewsets
 
+from apps.params import int_param
+
 from .models import Hero
 from .serializers import HeroSerializer
 
@@ -14,6 +16,7 @@ class HeroViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         params = self.request.query_params
         for field in ("group", "journey"):
-            if params.get(field) is not None:
-                qs = qs.filter(**{f"{field}_id": params[field]})
+            value = int_param(params, field)
+            if value is not None:
+                qs = qs.filter(**{f"{field}_id": value})
         return qs

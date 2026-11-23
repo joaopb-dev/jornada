@@ -39,7 +39,9 @@ class UserAdminSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name',
             'is_active', 'is_staff', 'date_joined', 'password',
         ]
-        read_only_fields = ['date_joined']
+        # is_staff não é gravável pela API: seria escalada de professor a
+        # admin do site /admin/ (auditado — só seed/superuser do Django define).
+        read_only_fields = ['date_joined', 'is_staff']
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)

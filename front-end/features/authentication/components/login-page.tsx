@@ -34,9 +34,12 @@ function Login() {
       setSession({ role: "professor", name: normalizedUsername, username: normalizedUsername });
       navigate({ to: "/salao" });
     } catch (error) {
-      const message = isAxiosError(error) && error.response?.status === 401
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      const message = status === 401
         ? "Usuário ou senha não conferem."
-        : "Não foi possível acessar a API. Verifique a conexão e tente novamente.";
+        : status === 429
+          ? "Muitas tentativas. Aguarde um pouco antes de tentar novamente."
+          : "Não foi possível acessar a API. Verifique a conexão e tente novamente.";
       setError("root", { message });
     }
   }
