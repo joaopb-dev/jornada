@@ -1,4 +1,5 @@
 import type { Agenda } from "@/features/public-agenda/schemas/agenda";
+import type { LeaderboardEntry } from "@/features/public-agenda/schemas/leaderboard";
 
 /**
  * Semente da agenda na demo completa (modo `enabled`) — espelha o
@@ -92,3 +93,59 @@ export const agendaSeed: Agenda = {
     },
   ],
 };
+
+/**
+ * Semente do placar público (`GET /api/leaderboard/`) — mesmas equipes
+ * da agenda com pontos de demonstração (batalhas + extras), ordenadas
+ * como o backend ordena: total desc, empate por nome.
+ */
+export const leaderboardSeed: LeaderboardEntry[] = [
+  {
+    position: 1,
+    id: 4,
+    name: "Chama Errante",
+    points: 110,
+    extra_points: 10,
+    total_points: 120,
+    member_count: 3,
+    crest_shape: "arredondado",
+    crest_color: "roxo",
+    crest_symbol: "chama",
+  },
+  {
+    position: 2,
+    id: 2,
+    name: "Corvos do Norte",
+    points: 85,
+    extra_points: 10,
+    total_points: 95,
+    member_count: 3,
+    crest_shape: "arredondado",
+    crest_color: "dourado",
+    crest_symbol: "corvo",
+  },
+  {
+    position: 3,
+    id: 3,
+    name: "Guardiões do Vale",
+    points: 70,
+    extra_points: 0,
+    total_points: 70,
+    member_count: 3,
+    crest_shape: "classico",
+    crest_color: "vermelho",
+    crest_symbol: "arvore",
+  },
+  {
+    position: 4,
+    id: 1,
+    name: "Lâmina de Prata",
+    points: 45,
+    extra_points: 0,
+    total_points: 45,
+    member_count: 3,
+    crest_shape: "classico",
+    crest_color: "verde",
+    crest_symbol: "espada",
+  },
+];

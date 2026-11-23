@@ -81,3 +81,15 @@ test("título em branco vira erro na lista", async () => {
   assert.ok(Array.isArray(body));
   assert.ok(body.includes("Título da incursão 1 é obrigatório."));
 });
+
+test("placar público devolve as equipes ordenadas com posição", async () => {
+  type BoardEntry = { position: number; name: string; points: number; extra_points: number; total_points: number };
+  const board: BoardEntry[] = await (await fetch(`${API_BASE_URL}/leaderboard/`)).json();
+  assert.equal(board.length, 4);
+  assert.deepEqual(board.map((entry) => entry.position), [1, 2, 3, 4]);
+  assert.equal(board[0].name, "Chama Errante");
+  assert.equal(board[0].total_points, 120);
+  assert.equal(board[3].name, "Lâmina de Prata");
+  assert.ok(board[0].total_points >= board[3].total_points, "total desc");
+  assert.equal(board[0].total_points, board[0].points + board[0].extra_points, "total = batalhas + extras");
+});

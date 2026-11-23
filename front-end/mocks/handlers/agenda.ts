@@ -5,7 +5,7 @@ import {
   type Agenda,
   type AgendaWrite,
 } from "@/features/public-agenda/schemas/agenda";
-import { agendaSeed } from "../landing-agenda";
+import { agendaSeed, leaderboardSeed } from "../landing-agenda";
 import { isMockTeacher } from "../mock-teacher";
 
 /**
@@ -51,6 +51,7 @@ function ruleErrors(payload: AgendaWrite): string[] {
 
 export const agendaHandlers = [
   http.get(`${API_BASE_URL}/agenda/`, () => HttpResponse.json(state)),
+  http.get(`${API_BASE_URL}/leaderboard/`, () => HttpResponse.json(leaderboardSeed)),
   http.put(`${API_BASE_URL}/agenda/`, async ({ request }) => {
     if (!isMockTeacher(request)) {
       return HttpResponse.json({ detail: "Acesso não autorizado." }, { status: 403 });
